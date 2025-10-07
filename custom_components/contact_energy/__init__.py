@@ -74,9 +74,16 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         self.api = api
         self.usage_days = config_data.get("usage_days", 10)
         self.entry = entry
-        from .const import CONF_AUTO_RESTART_ENABLED, CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_TIME
-        self._reload_enabled = config_data.get(CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED)
-        self._reload_time = config_data.get(CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_TIME)
+        from .const import (
+            CONF_AUTO_RESTART_ENABLED,
+            DEFAULT_AUTO_RESTART_ENABLED,
+            DEFAULT_AUTO_RESTART_TIME,
+        )
+        self._reload_enabled = config_data.get(
+            CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED
+        )
+        # Hardwire to 03:00 regardless of stored values
+        self._reload_time = DEFAULT_AUTO_RESTART_TIME
         self._reload_task = None
         self._initialized = False
         if entry:
@@ -115,9 +122,6 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         delay = (next_reload - now).total_seconds()
         _LOGGER.info("Next Contact Energy restart scheduled for: %s", next_reload.strftime("%Y-%m-%d %H:%M:%S %Z"))
         
-        # Send scheduling notification for debugging
-        self.hass.async_create_task(self._notify_restart_scheduled(next_reload))
-        
         self._reload_task = self.hass.async_create_task(self._wait_and_reload(delay))
 
     async def _wait_and_reload(self, delay: float):
@@ -140,17 +144,6 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                 await self.hass.config_entries.async_reload(self.entry.entry_id)
                 _LOGGER.info("Contact Energy restart successful on attempt %d", attempt + 1)
                 
-                # Send success notification
-                from datetime import datetime
-                await self.hass.services.async_call(
-                    "persistent_notification",
-                    "create",
-                    {
-                        "title": "Contact Energy - Restart Successful",
-                        "message": f"Scheduled restart completed successfully at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Integration has been refreshed and is ready for use.",
-                        "notification_id": f"{DOMAIN}_restart_success"
-                    }
-                )
                 return
             except Exception as error:
                 _LOGGER.warning("Restart attempt %d failed: %s", attempt + 1, error)
@@ -171,58 +164,39 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
             }
         )
 
-    async def _notify_restart_scheduled(self, next_reload):
-        await self.hass.services.async_call(
-            "persistent_notification",
-            "create",
-            {
-                "title": "Contact Energy - Auto-Restart Scheduled",
-                "message": f"Integration auto-restart is enabled and scheduled for: {next_reload.strftime('%Y-%m-%d %H:%M:%S %Z')}. You will receive a notification when the restart completes.",
-                "notification_id": f"{DOMAIN}_restart_scheduled"
-            }
-        )
+    # Removed scheduling notification
 
     async def _handle_options_update(self, hass, entry):
         old_enabled = self._reload_enabled
         old_time = self._reload_time
-        from .const import CONF_AUTO_RESTART_ENABLED, CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_TIME
-        self._reload_enabled = entry.options.get(CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED)
-        self._reload_time = entry.options.get(CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_TIME)
-        
+        from .const import (
+            CONF_AUTO_RESTART_ENABLED,
+            DEFAULT_AUTO_RESTART_ENABLED,
+            DEFAULT_AUTO_RESTART_TIME,
+        )
+        self._reload_enabled = entry.options.get(
+            CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED
+        )
+        # Always enforce 03:00 regardless of options
+        self._reload_time = DEFAULT_AUTO_RESTART_TIME
+
         # Only schedule if coordinator is fully initialized
         if not self._initialized:
             return
-            
+
         if old_enabled != self._reload_enabled or old_time != self._reload_time:
             if self._reload_task:
                 self._reload_task.cancel()
             if self._reload_enabled:
-                _LOGGER.info("Auto-restart rescheduled: enabled=%s, time=%s", self._reload_enabled, self._reload_time)
-                self._schedule_next_reload()
-                
-                # Send notification about the schedule change
-                next_reload = self._calculate_next_reload()
-                await self.hass.services.async_call(
-                    "persistent_notification",
-                    "create",
-                    {
-                        "title": "Contact Energy - Auto-Restart Updated",
-                        "message": f"Auto-restart settings updated. Next restart scheduled for: {next_reload.strftime('%Y-%m-%d %H:%M:%S %Z')}.",
-                        "notification_id": f"{DOMAIN}_restart_updated"
-                    }
+                _LOGGER.info(
+                    "Auto-restart rescheduled: enabled=%s, time=%s",
+                    self._reload_enabled,
+                    self._reload_time,
                 )
+                self._schedule_next_reload()
             else:
                 _LOGGER.info("Auto-restart disabled")
-                # Send notification about disabling
-                await self.hass.services.async_call(
-                    "persistent_notification",
-                    "create",
-                    {
-                        "title": "Contact Energy - Auto-Restart Disabled",
-                        "message": "Auto-restart feature has been disabled. No scheduled restarts will occur.",
-                        "notification_id": f"{DOMAIN}_restart_disabled"
-                    }
-                )
+                # No notification when disabling
 
     async def _async_update_data(self) -> dict:
         """Fetch data from Contact Energy."""
