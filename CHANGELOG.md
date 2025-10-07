@@ -1,3 +1,8 @@
+## v0.3.9 - 2025-10-07
+
+
+Fix HACS README version rendering
+
 ## v0.3.8 - 2025-10-07
 
 

@@ -40,6 +40,9 @@ sed -i "s/\"version\": \"v${CURRENT_VERSION}\"/\"version\": \"v${NEW_VERSION}\"/
 echo -e "${YELLOW}Updating README.md...${NC}"
 # Replace '**Version:** <anything>' with the new version, case-insensitive match for 'Version'
 sed -i -E "s/^\*\*Version:\*\* .*/**Version:** ${NEW_VERSION}/I" README.md
+# Also replace HTML header variant '<strong>version:</strong> X.Y.Z' inside the README header table
+# This is resilient to publish flows that transform Markdown/HTML differently
+sed -i -E "s|(<strong>[Vv]ersion:</strong> )[0-9]+\.[0-9]+\.[0-9]+|\1${NEW_VERSION}|" README.md
 
 # Update version in info.md
 echo -e "${YELLOW}Updating info.md...${NC}"
