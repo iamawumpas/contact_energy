@@ -33,10 +33,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     # Create coordinator
-    coordinator = ContactEnergyCoordinator(hass, api, entry.data)
+    coordinator = ContactEnergyCoordinator(hass, api, entry.data, entry)
 
     # Perform initial data fetch
     await coordinator.async_config_entry_first_refresh()
+    
+    # Start auto-restart scheduling after initialization
+    coordinator._initialized = True
+    if coordinator._reload_enabled:
+        coordinator._schedule_next_reload()
 
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
@@ -73,14 +78,14 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         self._reload_enabled = config_data.get(CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED)
         self._reload_time = config_data.get(CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_TIME)
         self._reload_task = None
+        self._initialized = False
         if entry:
             entry.add_update_listener(self._handle_options_update)
-        if self._reload_enabled:
-            self._schedule_next_reload()
 
     def _calculate_next_reload(self):
-        import homeassistant.util.dt as dt_util
-        now = dt_util.now(self.hass.config.time_zone)
+        from datetime import datetime
+        import zoneinfo
+        now = datetime.now(self.hass.config.time_zone)
         hour, minute = map(int, self._reload_time.split(":"))
         next_reload = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
         if next_reload <= now:
@@ -124,12 +129,14 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
                     await self._notify_reload_failure(str(error))
 
     async def _notify_reload_failure(self, error_msg: str):
-        from homeassistant.components.persistent_notification import async_create
-        await async_create(
-            self.hass,
-            f"Scheduled restart of Contact Energy integration failed: {error_msg}. You may need to manually reload the integration.",
-            title="Contact Energy - Restart Failed",
-            notification_id=f"{DOMAIN}_restart_failed"
+        await self.hass.services.async_call(
+            "persistent_notification",
+            "create",
+            {
+                "title": "Contact Energy - Restart Failed",
+                "message": f"Scheduled restart of Contact Energy integration failed: {error_msg}. You may need to manually reload the integration.",
+                "notification_id": f"{DOMAIN}_restart_failed"
+            }
         )
 
     async def _handle_options_update(self, hass, entry):
@@ -138,6 +145,11 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         from .const import CONF_AUTO_RESTART_ENABLED, CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_TIME
         self._reload_enabled = entry.options.get(CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED)
         self._reload_time = entry.options.get(CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_TIME)
+        
+        # Only schedule if coordinator is fully initialized
+        if not self._initialized:
+            return
+            
         if old_enabled != self._reload_enabled or old_time != self._reload_time:
             if self._reload_task:
                 self._reload_task.cancel()
