@@ -2,7 +2,7 @@
 
 version: 0.3.9
 
-![Contact Energy Logo](https://raw.githubusercontent.com/iamawumpas/contact_energy/main/logo.svg)
+![Contact Energy Logo](logo.svg)
 
 A custom integration for Contact Energy (NZ) to access account and usage data. See README for details, installation and limitations.
 
