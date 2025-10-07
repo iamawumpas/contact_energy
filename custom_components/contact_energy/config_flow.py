@@ -93,40 +93,14 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
 
 class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for Contact Energy."""
+
+    VERSION = 1
+
     @staticmethod
     @config_entries.callback
     def async_get_options_flow(config_entry):
         return ContactEnergyOptionsFlow(config_entry)
-
-
-class ContactEnergyOptionsFlow(config_entries.OptionsFlow):
-    def __init__(self, config_entry):
-        self.config_entry = config_entry
-
-    async def async_step_init(self, user_input=None):
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
-        current_enabled = self.config_entry.options.get(
-            CONF_AUTO_RESTART_ENABLED,
-            self.config_entry.data.get(CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED)
-        )
-        current_time = self.config_entry.options.get(
-            CONF_AUTO_RESTART_TIME,
-            self.config_entry.data.get(CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_TIME)
-        )
-        schema = {
-            vol.Optional(CONF_AUTO_RESTART_ENABLED, default=current_enabled): cv.boolean,
-        }
-        if current_enabled:
-            schema[vol.Optional(CONF_AUTO_RESTART_TIME, default=current_time)] = cv.time
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(schema)
-        )
-    """Handle a config flow for Contact Energy."""
-
-    VERSION = 1
 
     def __init__(self):
         """Initialize the config flow."""
@@ -217,4 +191,31 @@ class ContactEnergyOptionsFlow(config_entries.OptionsFlow):
             step_id="contract",
             data_schema=contract_schema,
             errors=errors,
+        )
+
+
+class ContactEnergyOptionsFlow(config_entries.OptionsFlow):
+    def __init__(self, config_entry):
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input=None):
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        current_enabled = self.config_entry.options.get(
+            CONF_AUTO_RESTART_ENABLED,
+            self.config_entry.data.get(CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED)
+        )
+        current_time = self.config_entry.options.get(
+            CONF_AUTO_RESTART_TIME,
+            self.config_entry.data.get(CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_TIME)
+        )
+        schema = {
+            vol.Optional(CONF_AUTO_RESTART_ENABLED, default=current_enabled): cv.boolean,
+        }
+        if current_enabled:
+            schema[vol.Optional(CONF_AUTO_RESTART_TIME, default=current_time)] = cv.time
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(schema)
         )
