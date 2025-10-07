@@ -32,9 +32,17 @@ def get_user_schema(current_input=None):
         vol.Required(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_USAGE_DAYS, default=10): vol.All(cv.positive_int, vol.Range(min=1, max=365)),
         vol.Optional(CONF_AUTO_RESTART_ENABLED, default=DEFAULT_AUTO_RESTART_ENABLED): cv.boolean,
-        vol.Optional(CONF_AUTO_RESTART_TIME, default=DEFAULT_AUTO_RESTART_TIME): cv.string,
     }
     return vol.Schema(schema)
+
+
+def get_restart_time_schema(current_time=None):
+    """Schema for auto-restart time configuration."""
+    if current_time is None:
+        current_time = DEFAULT_AUTO_RESTART_TIME
+    return vol.Schema({
+        vol.Optional(CONF_AUTO_RESTART_TIME, default=current_time): cv.string,
+    })
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
@@ -119,6 +127,13 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._contracts = self._validated_data["contracts"]
                 self._current_input.update(user_input)
                 
+                # If auto-restart is enabled, go to restart time configuration
+                if user_input.get(CONF_AUTO_RESTART_ENABLED, False):
+                    return await self.async_step_restart_time()
+                else:
+                    # Set default time if auto-restart is disabled
+                    user_input[CONF_AUTO_RESTART_TIME] = DEFAULT_AUTO_RESTART_TIME
+                
                 # If only one contract is available, skip the selection step
                 if len(self._contracts) == 1:
                     contract = self._contracts[0]
@@ -150,6 +165,36 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=schema,
             errors=errors,
+        )
+
+    async def async_step_restart_time(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle restart time configuration step."""
+        if user_input is not None:
+            # Merge restart time with previous input
+            self._current_input.update(user_input)
+            
+            # If only one contract is available, skip the selection step
+            if len(self._contracts) == 1:
+                contract = self._contracts[0]
+                self._current_input[CONF_ACCOUNT_ID] = contract["account_id"]
+                self._current_input[CONF_CONTRACT_ID] = contract["id"]
+                self._current_input[CONF_CONTRACT_ICP] = contract["icp"]
+                
+                await self.async_set_unique_id(contract["id"])
+                self._abort_if_unique_id_configured()
+                
+                return self.async_create_entry(
+                    title=f"{self._validated_data['title']} - {contract['address']}",
+                    data=self._current_input
+                )
+            
+            return await self.async_step_contract()
+
+        return self.async_show_form(
+            step_id="restart_time",
+            data_schema=get_restart_time_schema(),
         )
 
     async def async_step_contract(
@@ -199,21 +244,41 @@ class ContactEnergyOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            # If auto-restart is enabled, go to time configuration
+            if user_input.get(CONF_AUTO_RESTART_ENABLED, False):
+                self._options_input = user_input
+                return await self.async_step_restart_time()
+            else:
+                # If disabled, set default time and create entry
+                user_input[CONF_AUTO_RESTART_TIME] = DEFAULT_AUTO_RESTART_TIME
+                return self.async_create_entry(title="", data=user_input)
 
         current_enabled = self.config_entry.options.get(
             CONF_AUTO_RESTART_ENABLED,
             self.config_entry.data.get(CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED)
         )
-        current_time = self.config_entry.options.get(
-            CONF_AUTO_RESTART_TIME,
-            self.config_entry.data.get(CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_TIME)
-        )
+        
         schema = {
             vol.Optional(CONF_AUTO_RESTART_ENABLED, default=current_enabled): cv.boolean,
-            vol.Optional(CONF_AUTO_RESTART_TIME, default=current_time): cv.string,
         }
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(schema)
+        )
+
+    async def async_step_restart_time(self, user_input=None):
+        if user_input is not None:
+            # Merge with previous options input
+            final_options = self._options_input.copy()
+            final_options.update(user_input)
+            return self.async_create_entry(title="", data=final_options)
+
+        current_time = self.config_entry.options.get(
+            CONF_AUTO_RESTART_TIME,
+            self.config_entry.data.get(CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_TIME)
+        )
+        
+        return self.async_show_form(
+            step_id="restart_time",
+            data_schema=get_restart_time_schema(current_time)
         )

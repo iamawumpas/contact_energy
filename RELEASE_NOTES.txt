@@ -1,13 +1,13 @@
-## v0.3.2 - 2025-10-07
-Fix critical config flow and timezone bugs
+## v0.3.3 - 2025-10-07
+Fix multiple integration errors
 
-CRITICAL FIXES: Fixed broken config flow class structure that was causing 'not_implemented' error. Fixed timezone handling error in auto-restart scheduling. Improved config flow UI to always show restart time field with clearer descriptions. Integration now sets up properly and auto-restart feature works correctly.
+CRITICAL FIXES: Fixed config flow schema serialization error with time picker. Fixed sensor attribute errors with last_update_success. Fixed date parsing to return proper date objects for date sensors. Fixed monetary sensor state class warnings. Integration now works completely without setup or runtime errors.
 
 **Manual steps:**
 1. Go to your GitHub repo: https://github.com/iamawumpas/contact_energy/releases
 2. Click 'Draft a new release'
-3. Tag version: v0.3.2
-4. Title: v0.3.2
+3. Tag version: v0.3.3
+4. Title: v0.3.3
 5. Paste the above release notes
 6. Publish the release
 7. Update HACS to use the new release/tag for version display
