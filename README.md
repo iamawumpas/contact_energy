@@ -4,12 +4,12 @@
       <img src="logo.svg" alt="Contact Energy Logo" width="auto" height="70px">
     </td>
     <td>
-      <span style="font-weight:800; font-size:2.5em">Contact Energy</span>&nbsp;&nbsp;<span style="font-size:1em;!important">Let's do the energy thing<img width="500" height="0"></span>
+      <span style="font-weight:800; font-size:2.5em;">Contact Energy</span>&nbsp;&nbsp;<span style="font-size:1em;!important">Let's do the energy thing<img width="500" height="0"></span>
     </td>
   </tr>
   <tr>
     <td colspan="2" style="border: none; padding-top: 0.5em;">
-  <strong>version:</strong> 0.1.0
+  <strong>version:</strong> 0.1.1
     </td>
   </tr>
 </table>

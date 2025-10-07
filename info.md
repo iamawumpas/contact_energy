@@ -1,6 +1,6 @@
 # Contact Energy — Home Assistant Custom Integration
 
-version: 0.1.0
+version: 0.1.1
 
 ![Contact Energy Logo](logo.svg)
 

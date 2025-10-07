@@ -1,4 +1,10 @@
 # CHANGE LOG
+**[2025-10-07]** 0.1.1
+
+- **Fixed HACS repository structure compliance** - set content_in_root to true
+- **Cleaned up assets folder references** from changelog
+- **Updated all version numbers** to 0.1.1
+
 **[2025-10-07]** 0.1.0
 
 - **Major Bump. Rebuilt the repository**
