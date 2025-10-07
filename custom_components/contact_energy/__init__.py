@@ -85,7 +85,13 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
     def _calculate_next_reload(self):
         from datetime import datetime
         import zoneinfo
-        now = datetime.now(self.hass.config.time_zone)
+        try:
+            tz = zoneinfo.ZoneInfo(self.hass.config.time_zone)
+        except Exception:
+            # Fallback to UTC if timezone parsing fails
+            tz = zoneinfo.ZoneInfo("UTC")
+        
+        now = datetime.now(tz)
         hour, minute = map(int, self._reload_time.split(":"))
         next_reload = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
         if next_reload <= now:
@@ -96,7 +102,17 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         if self._reload_task:
             self._reload_task.cancel()
         next_reload = self._calculate_next_reload()
-        delay = (next_reload - self.hass.util.dt.now()).total_seconds()
+        
+        # Calculate delay using timezone-aware datetime
+        from datetime import datetime
+        import zoneinfo
+        try:
+            tz = zoneinfo.ZoneInfo(self.hass.config.time_zone)
+        except Exception:
+            tz = zoneinfo.ZoneInfo("UTC")
+        
+        now = datetime.now(tz)
+        delay = (next_reload - now).total_seconds()
         _LOGGER.info("Next Contact Energy restart scheduled for: %s", next_reload.strftime("%Y-%m-%d %H:%M:%S %Z"))
         self._reload_task = self.hass.async_create_task(self._wait_and_reload(delay))
 
