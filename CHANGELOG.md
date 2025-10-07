@@ -1,3 +1,8 @@
+## v0.3.10 - 2025-10-07
+
+
+Stability + HACS rendering; auto-restart at 03:00
+
 ## v0.3.9 - 2025-10-07
 
 
