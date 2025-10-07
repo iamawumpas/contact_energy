@@ -1,7 +1,7 @@
 <table>
   <tr>
     <td style="vertical-align: top;">
-      <img src="logo.svg" alt="Contact Energy Logo" width="auto" height="50px" style="vertical-align: top; display: inline-block;">
+  <img src="https://raw.githubusercontent.com/iamawumpas/contact_energy/main/logo.svg" alt="Contact Energy Logo" width="auto" height="50px" style="vertical-align: top; display: inline-block;">
     </td>
     <td >
       <h1>Contact Energy</h1>
