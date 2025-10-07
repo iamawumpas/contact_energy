@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Any, Callable, Optional
 
 from homeassistant.config_entries import ConfigEntry
@@ -73,7 +73,7 @@ async def async_setup_entry(
             SENSOR_ACCOUNT_BALANCE_NAME,
             CURRENCY_DOLLAR,
             "mdi:cash",
-            SensorStateClass.MEASUREMENT,
+            None,  # No state class for monetary sensors
             SensorDeviceClass.MONETARY,
             lambda data: data.get("accountDetail", {}).get("accountBalance", {}).get("currentBalance"),
         ),
@@ -83,7 +83,7 @@ async def async_setup_entry(
             SENSOR_NEXT_BILL_AMOUNT_NAME,
             CURRENCY_DOLLAR,
             "mdi:cash-clock",
-            SensorStateClass.MEASUREMENT,
+            None,  # No state class for monetary sensors
             SensorDeviceClass.MONETARY,
             lambda data: data.get("accountDetail", {}).get("nextBill", {}).get("amount"),
         ),
@@ -103,7 +103,7 @@ async def async_setup_entry(
             SENSOR_PAYMENT_DUE_NAME,
             CURRENCY_DOLLAR,
             "mdi:cash-marker",
-            SensorStateClass.MEASUREMENT,
+            None,  # No state class for monetary sensors
             SensorDeviceClass.MONETARY,
             lambda data: data.get("accountDetail", {}).get("invoice", {}).get("amountDue"),
         ),
@@ -142,17 +142,17 @@ async def async_setup_entry(
     async_add_entities(sensors, True)
 
 
-def _parse_date(date_str: str) -> str | None:
+def _parse_date(date_str: str) -> date | None:
     """Parse date string from Contact Energy API."""
     if not date_str:
         return None
     try:
-        return datetime.strptime(date_str, "%d %b %Y").date().isoformat()
+        return datetime.strptime(date_str, "%d %b %Y").date()
     except (ValueError, TypeError):
         return None
 
 
-def _parse_meter_reading_date(data: dict, field_name: str) -> str | None:
+def _parse_meter_reading_date(data: dict, field_name: str) -> date | None:
     """Parse meter reading date from nested structure."""
     try:
         contracts = data.get("accountDetail", {}).get("contracts", [])
@@ -235,8 +235,8 @@ class ContactEnergyAccountSensor(ContactEnergyBaseSensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attrs = {}
-        if self.coordinator.last_update_success:
-            attrs["last_updated"] = self.coordinator.last_update_success.isoformat()
+        if self.coordinator.last_update_success_time:
+            attrs["last_updated"] = self.coordinator.last_update_success_time.isoformat()
         
         # Add payment history for monetary sensors
         if (self._attr_device_class == SensorDeviceClass.MONETARY and 
