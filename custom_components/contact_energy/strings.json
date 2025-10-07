@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect to Contact Energy",
-        "description": "Enter your Contact Energy account details. Note: Large date ranges (>30 days) will download data in the background to avoid blocking the interface. Optionally enable automatic daily restart to improve reliability and speed of historical data downloads.",
+        "description": "Enter your Contact Energy account details below. Email and password are for your Contact Energy account login. Usage days determines how much historical data to fetch (1-365 days). Large ranges will download in background. Auto-restart improves reliability and speed by restarting daily at 3 AM.",
         "data": {
           "email": "Email",
           "password": "Password",
