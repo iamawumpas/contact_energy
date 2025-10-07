@@ -1,15 +1,22 @@
-# Contact Energy
+<table>
+  <tr>
+    <td style="width:100px!important;">
+      <img src="logo.svg" alt="Contact Energy Logo" width="auto" height="70px">
+    </td>
+    <td>
+      <span style="font-weight:800; font-size:2.5em;">Contact Energy</span>&nbsp;&nbsp;<span style="font-size:1em;!important">Let's do the energy thing<img width="500" height="0"></span>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" style="border: none; padding-top: 0.5em;">
+  <strong>version:</strong> 0.3.8
+    </td>
+  </tr>
+</table>
 
-**Let's do the energy thing**
-
-**Version:** 0.3.8
-
-![Contact Energy Logo](logo.svg)
-
-A 2025 implementation of the **Home Assistant** Contact Energy integration in HACS, to fix bugs on my HA instance.
+My implementation of the **Home Assistant** Contact Energy integration in HACS, to fix bugs on my HA instance.
 
 ## Why make my own version
-
 I have used ***cody1515's*** original integration, and later, ***notf0und's*** fork, to access my energy usage from Contact Energy (a New Zealand electricity supplier) for several years now.
 
 However, for some reason since August 2025, the integration has refused to download my usage data, while all other Contact Energy data was being updated. I assumed it was a change to Contact Energy's api structure, but then again their app hasn't been updated recently and it works fine. So I decided to see if the integration could be fixed.
@@ -55,7 +62,7 @@ Contact Energy makes your energy usage available to download, anywhere between 2
 1. Restart Home Assistant (OK solution)  
 2. create a script to restart the integration as a cron job or internally using HA. I have done this, although I don't have a copy of the script/YAML on hand (stoopidly forgot to save a copy of it).
 
-## Free to use
+# Free to use
 
 If anyone finds this repository, you are free to use the code as is - no warranties are provided. It works for me. I may, in the future modify the functionality to get more information for my HA instance.
 
