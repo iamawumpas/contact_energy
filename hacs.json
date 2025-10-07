@@ -7,5 +7,6 @@
   "iot_class": "cloud_polling",
   "content_in_root": false,
   "zip_release": false,
-  "hide_default_branch": false
+  "hide_default_branch": false,
+  "ignore": ["release.sh", "RELEASE_NOTES.txt"]
 }
