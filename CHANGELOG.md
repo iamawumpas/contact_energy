@@ -1,3 +1,8 @@
+## v0.3.5 - 2025-10-07
+Add comprehensive friendly text to config flow
+
+UI IMPROVEMENTS: Added helpful descriptions for all config flow fields including email, password, usage days, and auto-restart settings. Enhanced user experience with clear guidance text under each input field in both initial setup and options configuration.
+
 ## v0.3.4 - 2025-10-07
 Improve config flow UX and add debug notifications
 
