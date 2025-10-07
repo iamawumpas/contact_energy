@@ -1,4 +1,10 @@
 # CHANGE LOG
+**[2025-10-07]** 0.1.2
+
+- **Fixed HACS manifest.json path issue** - corrected content_in_root to false for subdirectory structure
+- **Resolved "No manifest.json file found" HACS error**
+- **Updated all version numbers** to 0.1.2
+
 **[2025-10-07]** 0.1.1
 
 - **Fixed HACS repository structure compliance** - set content_in_root to true
