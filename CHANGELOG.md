@@ -1,3 +1,8 @@
+## v0.3.6 - 2025-10-07
+Enhance translation system compatibility
+
+TRANSLATION IMPROVEMENTS: Enhanced config flow translations with comprehensive data_description fields for better Home Assistant compatibility. Improved field descriptions and user guidance text. Verified translation structure matches Home Assistant standards and working integration examples. Ready for latest HA versions with proper friendly text support.
+
 ## v0.3.5 - 2025-10-07
 Add comprehensive friendly text to config flow
 
