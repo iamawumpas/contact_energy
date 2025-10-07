@@ -1,3 +1,8 @@
+## v0.3.2 - 2025-10-07
+Fix critical config flow and timezone bugs
+
+CRITICAL FIXES: Fixed broken config flow class structure that was causing 'not_implemented' error. Fixed timezone handling error in auto-restart scheduling. Improved config flow UI to always show restart time field with clearer descriptions. Integration now sets up properly and auto-restart feature works correctly.
+
 ## v0.3.1 - 2025-10-07
 Fix initialization race condition
 
