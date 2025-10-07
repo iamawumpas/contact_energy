@@ -1,3 +1,8 @@
+## v0.3.1 - 2025-10-07
+Fix initialization race condition
+
+Fixed auto-restart initialization race condition that was causing 'not_implemented' error during integration setup. Auto-restart scheduling now happens after coordinator is fully initialized, preventing setup conflicts.
+
 **[2025-10-07]** 0.2.0
 
 
