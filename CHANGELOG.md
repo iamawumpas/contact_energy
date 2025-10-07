@@ -5,7 +5,6 @@
 
 **[2025-10-07]** 0.0.14
 
-- **as a work-around have created manifest.json in ../assets/**
 - **bumped version to 0.0.14 across README and info**
 
 **[2025-10-07]** 0.0.13
