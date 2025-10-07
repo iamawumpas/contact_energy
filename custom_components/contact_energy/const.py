@@ -4,11 +4,14 @@ DOMAIN = "contact_energy"
 NAME = "Contact Energy"
 DEFAULT_SCAN_INTERVAL = 28800  # 8 hours in seconds
 
-# Configuration keys
 CONF_ACCOUNT_ID = "account_id"
 CONF_CONTRACT_ID = "contract_id"
 CONF_CONTRACT_ICP = "contract_icp"
 CONF_USAGE_DAYS = "usage_days"
+CONF_AUTO_RESTART_ENABLED = "enable_auto_restart"
+CONF_AUTO_RESTART_TIME = "restart_time"
+DEFAULT_AUTO_RESTART_ENABLED = False
+DEFAULT_AUTO_RESTART_TIME = "03:00"
 
 # Sensor names
 SENSOR_USAGE_NAME = "Usage"

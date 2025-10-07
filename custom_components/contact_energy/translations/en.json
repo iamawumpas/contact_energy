@@ -3,11 +3,17 @@
     "step": {
       "user": {
         "title": "Connect to Contact Energy",
-        "description": "Enter your Contact Energy account details. Note: Large date ranges (>30 days) will download data in the background to avoid blocking the interface.",
+        "description": "Enter your Contact Energy account details. Note: Large date ranges (>30 days) will download data in the background to avoid blocking the interface. Optionally enable automatic daily restart to improve reliability and speed of historical data downloads.",
         "data": {
           "email": "Email",
           "password": "Password",
-          "usage_days": "Fetch data for the past X days (1-365)"
+          "usage_days": "Fetch data for the past X days (1-365)",
+          "enable_auto_restart": "Enable automatic restart (recommended for faster data downloads)",
+          "restart_time": "Daily restart time (HH:MM, 24-hour)"
+        },
+        "data_description": {
+          "enable_auto_restart": "Automatically restarts the integration daily to improve data download reliability and speed. This can help resolve temporary connection issues and ensure fresh data is retrieved.",
+          "restart_time": "Time when the integration will restart daily. Choose a time when you're typically not using Home Assistant. The restart only affects this integration, not your entire Home Assistant system."
         }
       },
       "contract": {

@@ -10,6 +10,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+import asyncio
 from .api import ContactEnergyApi
 from .const import DOMAIN, DEFAULT_SCAN_INTERVAL
 
@@ -57,7 +58,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 class ContactEnergyCoordinator(DataUpdateCoordinator):
     """Class to manage fetching Contact Energy data."""
 
-    def __init__(self, hass: HomeAssistant, api: ContactEnergyApi, config_data: dict) -> None:
+    def __init__(self, hass: HomeAssistant, api: ContactEnergyApi, config_data: dict, entry: ConfigEntry = None) -> None:
         """Initialize coordinator."""
         super().__init__(
             hass,
@@ -67,6 +68,84 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         )
         self.api = api
         self.usage_days = config_data.get("usage_days", 10)
+        self.entry = entry
+        from .const import CONF_AUTO_RESTART_ENABLED, CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_TIME
+        self._reload_enabled = config_data.get(CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED)
+        self._reload_time = config_data.get(CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_TIME)
+        self._reload_task = None
+        if entry:
+            entry.add_update_listener(self._handle_options_update)
+        if self._reload_enabled:
+            self._schedule_next_reload()
+
+    def _calculate_next_reload(self):
+        import homeassistant.util.dt as dt_util
+        now = dt_util.now(self.hass.config.time_zone)
+        hour, minute = map(int, self._reload_time.split(":"))
+        next_reload = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if next_reload <= now:
+            next_reload += timedelta(days=1)
+        return next_reload
+
+    def _schedule_next_reload(self):
+        if self._reload_task:
+            self._reload_task.cancel()
+        next_reload = self._calculate_next_reload()
+        delay = (next_reload - self.hass.util.dt.now()).total_seconds()
+        _LOGGER.info("Next Contact Energy restart scheduled for: %s", next_reload.strftime("%Y-%m-%d %H:%M:%S %Z"))
+        self._reload_task = self.hass.async_create_task(self._wait_and_reload(delay))
+
+    async def _wait_and_reload(self, delay: float):
+        try:
+            await asyncio.sleep(delay)
+            await self._perform_daily_reload()
+        except asyncio.CancelledError:
+            _LOGGER.debug("Restart task cancelled")
+        except Exception as error:
+            _LOGGER.exception("Unexpected error in restart task: %s", error)
+        finally:
+            if self._reload_enabled:
+                self._schedule_next_reload()
+
+    async def _perform_daily_reload(self):
+        max_retries = 5
+        retry_delay = 300
+        for attempt in range(max_retries):
+            try:
+                await self.hass.config_entries.async_reload(self.entry.entry_id)
+                _LOGGER.info("Contact Energy restart successful on attempt %d", attempt + 1)
+                return
+            except Exception as error:
+                _LOGGER.warning("Restart attempt %d failed: %s", attempt + 1, error)
+                if attempt < max_retries - 1:
+                    _LOGGER.info("Retrying in 5 minutes...")
+                    await asyncio.sleep(retry_delay)
+                else:
+                    await self._notify_reload_failure(str(error))
+
+    async def _notify_reload_failure(self, error_msg: str):
+        from homeassistant.components.persistent_notification import async_create
+        await async_create(
+            self.hass,
+            f"Scheduled restart of Contact Energy integration failed: {error_msg}. You may need to manually reload the integration.",
+            title="Contact Energy - Restart Failed",
+            notification_id=f"{DOMAIN}_restart_failed"
+        )
+
+    async def _handle_options_update(self, hass, entry):
+        old_enabled = self._reload_enabled
+        old_time = self._reload_time
+        from .const import CONF_AUTO_RESTART_ENABLED, CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_TIME
+        self._reload_enabled = entry.options.get(CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED)
+        self._reload_time = entry.options.get(CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_TIME)
+        if old_enabled != self._reload_enabled or old_time != self._reload_time:
+            if self._reload_task:
+                self._reload_task.cancel()
+            if self._reload_enabled:
+                _LOGGER.info("Auto-restart rescheduled: enabled=%s, time=%s", self._reload_enabled, self._reload_time)
+                self._schedule_next_reload()
+            else:
+                _LOGGER.info("Auto-restart disabled")
 
     async def _async_update_data(self) -> dict:
         """Fetch data from Contact Energy."""

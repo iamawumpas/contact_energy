@@ -23,13 +23,19 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema(
-    {
+
+from .const import CONF_AUTO_RESTART_ENABLED, CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_TIME
+
+def get_user_schema(current_input=None):
+    schema = {
         vol.Required(CONF_EMAIL): cv.string,
         vol.Required(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_USAGE_DAYS, default=10): vol.All(cv.positive_int, vol.Range(min=1, max=365)),
+        vol.Optional(CONF_AUTO_RESTART_ENABLED, default=DEFAULT_AUTO_RESTART_ENABLED): cv.boolean,
     }
-)
+    if current_input is None or current_input.get(CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED):
+        schema[vol.Optional(CONF_AUTO_RESTART_TIME, default=DEFAULT_AUTO_RESTART_TIME)] = cv.time
+    return vol.Schema(schema)
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
@@ -87,6 +93,37 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
 
 class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    @staticmethod
+    @config_entries.callback
+    def async_get_options_flow(config_entry):
+        return ContactEnergyOptionsFlow(config_entry)
+
+
+class ContactEnergyOptionsFlow(config_entries.OptionsFlow):
+    def __init__(self, config_entry):
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input=None):
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        current_enabled = self.config_entry.options.get(
+            CONF_AUTO_RESTART_ENABLED,
+            self.config_entry.data.get(CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED)
+        )
+        current_time = self.config_entry.options.get(
+            CONF_AUTO_RESTART_TIME,
+            self.config_entry.data.get(CONF_AUTO_RESTART_TIME, DEFAULT_AUTO_RESTART_TIME)
+        )
+        schema = {
+            vol.Optional(CONF_AUTO_RESTART_ENABLED, default=current_enabled): cv.boolean,
+        }
+        if current_enabled:
+            schema[vol.Optional(CONF_AUTO_RESTART_TIME, default=current_time)] = cv.time
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(schema)
+        )
     """Handle a config flow for Contact Energy."""
 
     VERSION = 1
@@ -135,10 +172,7 @@ class ContactEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
 
         # Preserve form values
-        schema = self.add_suggested_values_to_schema(
-            STEP_USER_DATA_SCHEMA, self._current_input
-        )
-
+        schema = get_user_schema(self._current_input)
         return self.async_show_form(
             step_id="user",
             data_schema=schema,
