@@ -11,6 +11,9 @@
           "enable_auto_restart": "Enable automatic restart (recommended for faster data downloads)"
         },
         "data_description": {
+          "email": "Your Contact Energy account email address",
+          "password": "Your Contact Energy account password",
+          "usage_days": "Number of days of historical usage data to fetch (1-365). Larger ranges will download in the background.",
           "enable_auto_restart": "Automatically restarts the integration daily to improve data download reliability and speed. This can help resolve temporary connection issues and ensure fresh data is retrieved."
         }
       },
@@ -42,5 +45,29 @@
       "already_configured": "This account is already configured."
     },
     "title": "Contact Energy"
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Auto-Restart",
+        "description": "Configure automatic daily restart settings. This feature helps improve data download reliability and speed.",
+        "data": {
+          "enable_auto_restart": "Enable automatic restart (recommended for faster data downloads)"
+        },
+        "data_description": {
+          "enable_auto_restart": "Automatically restarts the integration daily to improve data download reliability and speed. This can help resolve temporary connection issues and ensure fresh data is retrieved."
+        }
+      },
+      "restart_time": {
+        "title": "Configure Restart Time",
+        "description": "Set the time when the integration will restart daily. Choose a time when you're typically not using Home Assistant.",
+        "data": {
+          "restart_time": "Daily restart time (24-hour format, e.g. 03:00)"
+        },
+        "data_description": {
+          "restart_time": "Time when the integration will restart daily (24-hour format). The restart only affects this integration, not your entire Home Assistant system."
+        }
+      }
+    }
   }
 }
