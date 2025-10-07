@@ -38,7 +38,8 @@ sed -i "s/\"version\": \"v${CURRENT_VERSION}\"/\"version\": \"v${NEW_VERSION}\"/
 
 # Update version in README.md
 echo -e "${YELLOW}Updating README.md...${NC}"
-sed -i "s/version: ${CURRENT_VERSION}/version: ${NEW_VERSION}/" README.md
+# Replace '**Version:** <anything>' with the new version, case-insensitive match for 'Version'
+sed -i -E "s/^\*\*Version:\*\* .*/**Version:** ${NEW_VERSION}/I" README.md
 
 # Update version in info.md
 echo -e "${YELLOW}Updating info.md...${NC}"
@@ -74,15 +75,6 @@ ${CHANGELOG_TITLE}
 
 ${CHANGELOG_DESC}
 
-**Manual steps:**
-1. Go to your GitHub repo: https://github.com/iamawumpas/contact_energy/releases
-2. Click 'Draft a new release'
-3. Tag version: v${NEW_VERSION}
-4. Title: v${NEW_VERSION}
-5. Paste the above release notes
-6. Publish the release
-7. Update HACS to use the new release/tag for version display
-
 EOF
 
 # Commit changes
@@ -96,7 +88,7 @@ git commit -m "Version bump to v${NEW_VERSION}
 echo -e "${GREEN}✅ Release v${NEW_VERSION} prepared successfully!${NC}"
 echo -e "${YELLOW}Next steps:${NC}"
 echo "1. Push changes: git push origin main"
-echo "2. Create GitHub release following instructions in RELEASE_NOTES.txt"
+echo "2. Create a GitHub release (tag v${NEW_VERSION}) using RELEASE_NOTES.txt, or run: gh release create v${NEW_VERSION} -t 'v${NEW_VERSION} - ${CHANGELOG_TITLE}' -F RELEASE_NOTES.txt"
 echo "3. HACS will automatically detect the new release"
 
 echo -e "${GREEN}Release notes saved to RELEASE_NOTES.txt${NC}"

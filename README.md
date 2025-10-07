@@ -2,7 +2,7 @@
 
 **Let's do the energy thing**
 
-**Version:** 0.3.6
+**Version:** 0.3.8
 
 ![Contact Energy Logo](logo.svg)
 
