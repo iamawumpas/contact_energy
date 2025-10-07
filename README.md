@@ -74,7 +74,7 @@ If anyone finds this repository, you are free to use the code as is - no warrant
 
 1. Ensure [HACS is installed](https://hacs.xyz/docs/setup/download).  
 2. Click the button below to open the repository in HACS:  
-   [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=iamawumpas&repository=contact-energy&category=integration)  
+   [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=iamawumpas&repository=contact_energy&category=integration)  
 3. Install the **Contact Energy** integration.  
 4. Restart Home Assistant.  
 
@@ -104,13 +104,15 @@ To see your electricity usage and costs in Home Assistant’s Energy Dashboard, 
 1. Go to → Settings → Dashboards → Energy
 2. Click "Add Consumption" and select:
 
-- Contact Energy - Electricity (###)
-  - Use an entity tracking the total costs
-  - Select Contact Energy - Electricity Cost (###)
+- Contact Energy - Electricity (xxx)
+  - where **xxx** represents your ICP number
+- Select one from  ***Select how Home Assistant should keep track of the costs of consumed energy.***
+  - I usually select ***Do not track costs*** as I am more interested in kwh rather than the price
+  - This is a feature from cody1515's original implementation and I have not tested it out fully. Have a play- let me know the results.
 
-3. Click "Add Consumption" again and select:
-
-- Contact Energy - Free Electricity (###)
+3. If you have other services on your account (for example Free Energy from 9pm-midnight, or Free energy weekends), click "Add Consumption" again and repeat Step 2.
+- Contact Energy - Free Electricity (xxx) 
+  - where **xxx** is your ICP number. Make sure you select the same ICP number as before if you are monitoring more than one dwelling.
 
 
 # Attribution and Acknowledgments

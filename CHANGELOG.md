@@ -3,6 +3,16 @@ Enhance translation system compatibility
 
 TRANSLATION IMPROVEMENTS: Enhanced config flow translations with comprehensive data_description fields for better Home Assistant compatibility. Improved field descriptions and user guidance text. Verified translation structure matches Home Assistant standards and working integration examples. Ready for latest HA versions with proper friendly text support.
 
+### Troubleshooting — Translations not updating
+
+If you don't see the new friendly text immediately after updating:
+
+- Perform a hard refresh in your browser (Ctrl+Shift+R on Windows/Linux, Cmd+Shift+R on macOS)
+- Try opening Home Assistant in a private/incognito window
+- Temporarily change your Profile language in Home Assistant and switch back to English
+- Clear site data for your Home Assistant URL in your browser's developer tools (Application/Storage)
+
+
 ## v0.3.5 - 2025-10-07
 Add comprehensive friendly text to config flow
 
@@ -18,12 +28,16 @@ Fix multiple integration errors
 
 CRITICAL FIXES: Fixed config flow schema serialization error with time picker. Fixed sensor attribute errors with last_update_success. Fixed date parsing to return proper date objects for date sensors. Fixed monetary sensor state class warnings. Integration now works completely without setup or runtime errors.
 
+ 
 ## v0.3.2 - 2025-10-07
+
 Fix critical config flow and timezone bugs
 
 CRITICAL FIXES: Fixed broken config flow class structure that was causing 'not_implemented' error. Fixed timezone handling error in auto-restart scheduling. Improved config flow UI to always show restart time field with clearer descriptions. Integration now sets up properly and auto-restart feature works correctly.
 
+ 
 ## v0.3.1 - 2025-10-07
+
 Fix initialization race condition
 
 Fixed auto-restart initialization race condition that was causing 'not_implemented' error during integration setup. Auto-restart scheduling now happens after coordinator is fully initialized, preventing setup conflicts.
@@ -36,16 +50,18 @@ Fixed auto-restart initialization race condition that was causing 'not_implement
 
 **[2025-10-07]** 0.1.1
 
+
 # CHANGE LOG
+
 **[2025-10-07]** 0.3.0
 
 - **Major feature: Automatic daily integration restart**
-	- Optionally restart the Contact Energy integration at a user-set time (default 03:00, disabled by default) to improve reliability and speed of historical data downloads
-	- Uses Home Assistant time picker for configuration
-	- Immediate effect when options are changed
-	- Next scheduled restart is logged
-	- 5 retry attempts with 5-minute intervals if restart fails; error notification if all fail
-	- Option to enable/disable from both setup and options
+  - Optionally restart the Contact Energy integration at a user-set time (default 03:00, disabled by default) to improve reliability and speed of historical data downloads
+  - Uses Home Assistant time picker for configuration
+  - Immediate effect when options are changed
+  - Next scheduled restart is logged
+  - 5 retry attempts with 5-minute intervals if restart fails; error notification if all fail
+  - Option to enable/disable from both setup and options
 - **Updated all version numbers** to 0.3.0
 
 **[2025-10-07]** 0.2.0
