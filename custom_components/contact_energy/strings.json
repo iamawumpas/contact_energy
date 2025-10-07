@@ -3,11 +3,11 @@
     "step": {
       "user": {
         "title": "Connect to Contact Energy",
-        "description": "Enter your Contact Energy account details.",
+        "description": "Enter your Contact Energy account details. Note: Large date ranges (>30 days) will download data in the background to avoid blocking the interface.",
         "data": {
           "email": "Email",
           "password": "Password",
-          "usage_days": "Fetch data for the past X days"
+          "usage_days": "Fetch data for the past X days (1-365)"
         }
       },
       "contract": {

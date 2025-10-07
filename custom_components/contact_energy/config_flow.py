@@ -27,7 +27,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_EMAIL): cv.string,
         vol.Required(CONF_PASSWORD): cv.string,
-        vol.Optional(CONF_USAGE_DAYS, default=10): cv.positive_int,
+        vol.Optional(CONF_USAGE_DAYS, default=10): vol.All(cv.positive_int, vol.Range(min=1, max=365)),
     }
 )
 

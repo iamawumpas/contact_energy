@@ -1,4 +1,14 @@
 # CHANGE LOG
+**[2025-10-07]** 0.2.0
+
+- **Major improvement: Background data downloading** - Large datasets (>30 days) now download in the background to prevent UI blocking
+- **Added progress notifications** - Users receive notifications showing download progress and completion status
+- **Implemented chunked downloading** - Data is downloaded in 10-day chunks with error recovery
+- **Enhanced error handling** - Better error messages and recovery for failed API calls
+- **Added configuration warnings** - Users are warned about large date ranges and given guidance
+- **Improved user experience** - No more hanging during setup with large date ranges like 260 days
+- **Updated all version numbers** to 0.2.0
+
 **[2025-10-07]** 0.1.2
 
 - **Fixed HACS manifest.json path issue** - corrected content_in_root to false for subdirectory structure
