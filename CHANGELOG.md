@@ -1,3 +1,8 @@
+## v0.3.8 - 2025-10-07
+
+
+HACS README rendering fixes and release tooling
+
 ## v0.3.6 - 2025-10-07
 Enhance translation system compatibility
 
