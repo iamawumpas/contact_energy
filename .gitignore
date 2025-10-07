@@ -1,0 +1,23 @@
+# Ignore support material folder (for assistant reference only)
+/support material/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Home Assistant typical local files
+.storage/
+.cloud/
+
+# OS files
+.DS_Store
+Thumbs.db
