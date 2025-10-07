@@ -32,9 +32,8 @@ def get_user_schema(current_input=None):
         vol.Required(CONF_PASSWORD): cv.string,
         vol.Optional(CONF_USAGE_DAYS, default=10): vol.All(cv.positive_int, vol.Range(min=1, max=365)),
         vol.Optional(CONF_AUTO_RESTART_ENABLED, default=DEFAULT_AUTO_RESTART_ENABLED): cv.boolean,
+        vol.Optional(CONF_AUTO_RESTART_TIME, default=DEFAULT_AUTO_RESTART_TIME): cv.time,
     }
-    if current_input is None or current_input.get(CONF_AUTO_RESTART_ENABLED, DEFAULT_AUTO_RESTART_ENABLED):
-        schema[vol.Optional(CONF_AUTO_RESTART_TIME, default=DEFAULT_AUTO_RESTART_TIME)] = cv.time
     return vol.Schema(schema)
 
 
@@ -212,9 +211,8 @@ class ContactEnergyOptionsFlow(config_entries.OptionsFlow):
         )
         schema = {
             vol.Optional(CONF_AUTO_RESTART_ENABLED, default=current_enabled): cv.boolean,
+            vol.Optional(CONF_AUTO_RESTART_TIME, default=current_time): cv.time,
         }
-        if current_enabled:
-            schema[vol.Optional(CONF_AUTO_RESTART_TIME, default=current_time)] = cv.time
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(schema)

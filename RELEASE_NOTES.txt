@@ -4,7 +4,7 @@ Fix initialization race condition
 Fixed auto-restart initialization race condition that was causing 'not_implemented' error during integration setup. Auto-restart scheduling now happens after coordinator is fully initialized, preventing setup conflicts.
 
 **Manual steps:**
-1. Go to your GitHub repo: https://github.com/<your-username>/<your-repo>/releases
+1. Go to your GitHub repo: https://github.com/iamawumpus/contact_energy/releases
 2. Click 'Draft a new release'
 3. Tag version: v0.3.1
 4. Title: v0.3.1
