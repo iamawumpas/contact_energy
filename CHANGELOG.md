@@ -1,3 +1,8 @@
+## v0.3.11 - 2025-10-07
+
+
+Embed logo in README to stabilize HACS rendering
+
 ## v0.3.10 - 2025-10-07
 
 Stability, HACS rendering reliability, and auto-restart simplification

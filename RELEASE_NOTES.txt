@@ -1,23 +1,5 @@
-## v0.3.10 - 2025-10-07
+## v0.3.11 - 2025-10-07
 
-Stability, HACS rendering reliability, and auto-restart simplification
 
-Changes since v0.3.6
-
-- Auto‑restart behavior simplified and hardened
-	- Fixed daily restart time to 03:00 (local timezone)
-	- Kept an Options checkbox to enable/disable the feature; removed time picker step from setup/options
-	- Removed non-essential success/schedule/updated/disabled notifications; kept a failure notification after retries
-	- Cleaned up strings/translations and help text to avoid implying the time can be chosen
-	- Improved scheduling logic and logging
-
-- HACS README rendering and release flow improvements
-	- Ensured README header version is updated for both Markdown and HTML variants in release.sh to prevent mismatches in HACS
-	- Standardized version stamping across manifest.json (vX.Y.Z), info.md, and hacs.json
-	- Documentation/content updates and cleanup in README (installation and setup)
-	- Excluded release tooling files from HACS downloads via hacs.json ignore list
-
-- General maintenance
-	- Multiple small doc/layout cleanups between v0.3.6 → v0.3.10
-	- Internal release script robustness improvements
+Embed logo in README to stabilize HACS rendering
 
