@@ -1,3 +1,8 @@
+## v0.3.4 - 2025-10-07
+Improve config flow UX and add debug notifications
+
+UX IMPROVEMENTS: Implemented conditional config flow steps - restart time field only shows when auto-restart is enabled, providing cleaner user experience. Added comprehensive debug notifications for auto-restart feature including scheduling confirmations, success/failure alerts, and settings change notifications. Enhanced user guidance with dedicated restart time configuration step.
+
 ## v0.3.3 - 2025-10-07
 Fix multiple integration errors
 

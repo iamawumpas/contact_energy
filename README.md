@@ -47,7 +47,7 @@ The integration creates two groups of entities:
   - next bill due date
   - and some other stuff I can't remember off hand (note: to self to update this someday).
 
-## New in v0.3.3
+## New in v0.3.4
 
 - **Automatic daily integration restart**: Optionally restart the Contact Energy integration at a user-set time (default 03:00, disabled by default) to improve reliability and speed of historical data downloads. Includes retry logic and error notification if all attempts fail. Configuration available in setup and options.
 
