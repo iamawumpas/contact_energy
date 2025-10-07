@@ -1,3 +1,8 @@
+## v0.3.3 - 2025-10-07
+Fix multiple integration errors
+
+CRITICAL FIXES: Fixed config flow schema serialization error with time picker. Fixed sensor attribute errors with last_update_success. Fixed date parsing to return proper date objects for date sensors. Fixed monetary sensor state class warnings. Integration now works completely without setup or runtime errors.
+
 ## v0.3.2 - 2025-10-07
 Fix critical config flow and timezone bugs
 
