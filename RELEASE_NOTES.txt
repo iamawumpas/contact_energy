@@ -1,13 +1,20 @@
-## v0.3.1 - 2025-10-07
-Fix initialization race condition
+## v0**Manual steps:**
+1. Go to your GitHub repo: https://github.com/iamawumpas/contact_energy/releases
+2. Click 'Draft a new release'
+3. Tag version: v0.3.2
+4. Title: v0.3.2
+5. Paste the above release notes
+6. Publish the release
+7. Update HACS to use the new release/tag for version display025-10-07
+Fix critical config flow and timezone bugs
 
-Fixed auto-restart initialization race condition that was causing 'not_implemented' error during integration setup. Auto-restart scheduling now happens after coordinator is fully initialized, preventing setup conflicts.
+CRITICAL FIXES: Fixed broken config flow class structure that was causing 'not_implemented' error. Fixed timezone handling error in auto-restart scheduling. Improved config flow UI to always show restart time field with clearer descriptions. Integration now sets up properly and auto-restart feature works correctly.
 
 **Manual steps:**
-1. Go to your GitHub repo: https://github.com/iamawumpus/contact_energy/releases
+1. Go to your GitHub repo: https://github.com/<iamawumpas>/<contact-energy>/releases
 2. Click 'Draft a new release'
-3. Tag version: v0.3.1
-4. Title: v0.3.1
+3. Tag version: v0.3.2
+4. Title: v0.3.2
 5. Paste the above release notes
 6. Publish the release
 7. Update HACS to use the new release/tag for version display
