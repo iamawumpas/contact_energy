@@ -1,14 +1,15 @@
 <table>
   <tr>
-    <td style="width:100px!important;">
-      <img src="logo.svg" alt="Contact Energy Logo" width="auto" height="70px">
+    <td style="vertical-align: top;">
+      <img src="logo.svg" alt="Contact Energy Logo" width="auto" height="50px" style="vertical-align: top; display: inline-block;">
     </td>
-    <td>
-      <span style="font-weight:800; font-size:2.5em;">Contact Energy</span>&nbsp;&nbsp;<span style="font-size:1em;!important">Let's do the energy thing<img width="500" height="0"></span>
+    <td >
+      <h1>Contact Energy</h1>
+      <h4>Let's do the energy thing</h4>
     </td>
   </tr>
   <tr>
-    <td colspan="2" style="border: none; padding-top: 0.5em;">
+    <td colspan="2" style="border: none; vertical-align: top;">
   <strong>version:</strong> 0.3.8
     </td>
   </tr>
