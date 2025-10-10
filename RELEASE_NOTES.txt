@@ -1,5 +1,5 @@
-## v0.3.11 - 2025-10-07
+## v0.3.12 - 2025-10-10
 
 
-Embed logo in README to stabilize HACS rendering
+Energy usage sensors implementation complete
 

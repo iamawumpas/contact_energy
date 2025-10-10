@@ -1,3 +1,8 @@
+## v0.3.12 - 2025-10-10
+
+
+Energy usage sensors implementation complete
+
 ## v0.3.11 - 2025-10-07
 
 
