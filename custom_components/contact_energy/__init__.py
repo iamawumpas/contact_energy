@@ -103,6 +103,13 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         next_reload = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
         if next_reload <= now:
             next_reload += timedelta(days=1)
+            
+        # Safety check: don't schedule too far in the future during startup
+        max_delay = timedelta(hours=25)  # Allow up to 25 hours
+        if (next_reload - now) > max_delay:
+            _LOGGER.warning("Next reload calculated too far in future, adjusting")
+            next_reload = now + timedelta(hours=24)
+            
         return next_reload
 
     def _schedule_next_reload(self):
@@ -126,6 +133,13 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
 
     async def _wait_and_reload(self, delay: float):
         try:
+            # Add safety check for delay value to prevent bootstrap timeout
+            if delay < 0 or delay > 86400:  # Max 24 hours
+                _LOGGER.warning("Invalid delay value %s seconds, rescheduling", delay)
+                self._schedule_next_reload()
+                return
+                
+            _LOGGER.debug("Waiting %s seconds until next restart", delay)
             await asyncio.sleep(delay)
             await self._perform_daily_reload()
         except asyncio.CancelledError:
@@ -207,10 +221,39 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         # Fetch account data
         account_data = await self.api.async_get_accounts()
         
-        # Fetch usage data will be handled by the usage sensor directly
-        # to avoid loading all historical data during every coordinator update
+        # Initialize data structure for the new sensors
+        usage_data = {}
+        
+        # Get account details to find ICPs for the new sensors
+        if account_data and "accountDetail" in account_data:
+            contracts = account_data.get("accountDetail", {}).get("contracts", [])
+            for contract in contracts:
+                if "icp" in contract:
+                    icp_number = contract["icp"]
+                    # Just store the ICP info, actual usage calculation will be done by individual sensors
+                    usage_data[icp_number] = {
+                        "icp_number": icp_number,
+                        "last_reading_date": None,  # Will be updated by usage sensors if available
+                        "daily_average_kwh": None,
+                    }
+        
+        # Schedule auto-restart after first successful data fetch to avoid bootstrap timeout
+        if not self._initialized and self._reload_enabled:
+            self._initialized = True
+            _LOGGER.debug("Coordinator initialized, scheduling auto-restart")
+            # Use a small delay to ensure this doesn't block bootstrap
+            self.hass.async_create_task(self._delayed_schedule_restart())
         
         return {
             "account": account_data,
+            "usage": usage_data,
             "last_update": self.last_update_success,
         }
+
+    async def _delayed_schedule_restart(self):
+        """Schedule restart with a small delay to avoid bootstrap timeout."""
+        try:
+            await asyncio.sleep(5)  # 5 second delay
+            self._schedule_next_reload()
+        except Exception as error:
+            _LOGGER.warning("Failed to schedule auto-restart: %s", error)

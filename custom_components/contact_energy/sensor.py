@@ -234,8 +234,12 @@ class ContactEnergyAccountSensor(ContactEnergyBaseSensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attrs = {}
-        if self.coordinator.last_update_success:
-            attrs["last_updated"] = self.coordinator.last_update_success.isoformat()
+        
+        # Use last_update_success_time for datetime, fallback to data timestamp
+        if hasattr(self.coordinator, 'last_update_success_time') and self.coordinator.last_update_success_time:
+            attrs["last_updated"] = self.coordinator.last_update_success_time.isoformat()
+        elif self.coordinator.data and "last_update" in self.coordinator.data and self.coordinator.data["last_update"]:
+            attrs["last_updated"] = self.coordinator.data["last_update"].isoformat()
         
         # Add payment history for monetary sensors
         if (self._attr_device_class == SensorDeviceClass.MONETARY and 
