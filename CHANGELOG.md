@@ -1,3 +1,8 @@
+## v0.4.0 - 2025-10-10
+bump to 0.4.0, changed logic to download only missing data after initial download
+
+
+
 ## v0.3.12 - 2025-10-10
 
 
