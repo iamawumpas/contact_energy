@@ -340,25 +340,85 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
             except Exception as error:
                 _LOGGER.error("Failed to update usage statistics: %s", error)
 
+    async def _get_missing_date_range(self) -> tuple[date, date]:
+        """Get the date range that needs to be downloaded based on stored tracking."""
+        now = datetime.now()
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0).date()
+        
+        # Default range for initial download
+        start_date = today - timedelta(days=self._usage_days - 1)
+        end_date = today
+        
+        try:
+            # Check if we have a stored last download date
+            storage_key = f"contact_energy_{self._icp}_last_download"
+            store = self.hass.helpers.storage.Store(1, f"{DOMAIN}.{storage_key}")
+            stored_data = await store.async_load() or {}
+            
+            last_download_str = stored_data.get("last_date")
+            if last_download_str:
+                last_download_date = datetime.fromisoformat(last_download_str).date()
+                _LOGGER.debug("Found stored last download date: %s", last_download_date)
+                
+                # If we have recent data, only download from day after last download to today
+                if (today - last_download_date).days <= self._usage_days and last_download_date < today:
+                    start_date = last_download_date + timedelta(days=1)
+                    _LOGGER.info("Incremental download: fetching from %s to %s", start_date, end_date)
+                elif last_download_date >= today:
+                    # We're up to date
+                    start_date = today + timedelta(days=1)  # This will result in no download
+                    _LOGGER.info("Data is up to date, no download needed")
+                else:
+                    # Gap is too large, do full download but log it
+                    _LOGGER.info("Large gap detected (%d days), doing full download from %s to %s", 
+                               (today - last_download_date).days, start_date, end_date)
+            else:
+                _LOGGER.info("No stored download date found, doing initial download from %s to %s", 
+                           start_date, end_date)
+                
+        except Exception as e:
+            _LOGGER.warning("Failed to check stored download date, doing full download: %s", e)
+            
+        return start_date, end_date
+    
+    async def _save_last_download_date(self, last_date: date) -> None:
+        """Save the last successfully downloaded date."""
+        try:
+            storage_key = f"contact_energy_{self._icp}_last_download"
+            store = self.hass.helpers.storage.Store(1, f"{DOMAIN}.{storage_key}")
+            await store.async_save({"last_date": last_date.isoformat()})
+            _LOGGER.debug("Saved last download date: %s", last_date)
+        except Exception as e:
+            _LOGGER.warning("Failed to save last download date: %s", e)
+
     async def _update_usage_statistics(self) -> None:
         """Fetch usage data and update Home Assistant statistics."""
         if not self._api._api_token and not await self._api.async_login():
             _LOGGER.error("Failed to login for usage data")
             return
 
-        now = datetime.now()
-        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        # Get the date range we need to download
+        start_date, end_date = await self._get_missing_date_range()
+        
+        # If start_date is after end_date, nothing to download
+        if start_date > end_date:
+            _LOGGER.debug("No new data to download")
+            return
 
-        kwh_statistics = []
+        # Initialize running sums - for incremental updates, start from 0 
+        # since we'll only be adding new days to the existing statistics
         kwh_running_sum = 0
-        dollar_statistics = []
         dollar_running_sum = 0
-        free_kwh_statistics = []
         free_kwh_running_sum = 0
+            
+        kwh_statistics = []
+        dollar_statistics = []
+        free_kwh_statistics = []
         currency = 'NZD'
 
-        for i in range(self._usage_days):
-            current_date = today - timedelta(days=self._usage_days - i)
+        # Iterate through the date range we need to download
+        current_date = start_date
+        while current_date <= end_date:
             _LOGGER.debug("Fetching usage data for %s", current_date.strftime("%Y-%m-%d"))
             
             response = await self._api.get_usage(
@@ -369,6 +429,7 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
 
             if not response:
                 _LOGGER.debug("No data available for %s", current_date.strftime("%Y-%m-%d"))
+                current_date += timedelta(days=1)
                 continue
 
             for point in response:
@@ -398,51 +459,78 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
                 dollar_statistics.append(StatisticData(start=date_obj, sum=dollar_running_sum))
                 free_kwh_statistics.append(StatisticData(start=date_obj, sum=free_kwh_running_sum))
 
+            # Move to next date
+            current_date += timedelta(days=1)
+
         # Update Home Assistant statistics
         await self._add_statistics(kwh_statistics, dollar_statistics, free_kwh_statistics, currency)
         self._state = kwh_running_sum
+        
+        # Save the last download date if we successfully downloaded data
+        if start_date <= end_date:
+            await self._save_last_download_date(end_date)
 
     async def _background_download_all_data(self) -> None:
-        """Download all historical data in the background with progress updates."""
+        """Download missing historical data in the background with progress updates."""
         try:
-            _LOGGER.info("Starting background download of %s days of usage data", self._usage_days)
+            _LOGGER.info("Starting background download for missing usage data")
             
             if not self._api._api_token and not await self._api.async_login():
                 _LOGGER.error("Failed to login for background data download")
                 await self._notify_download_error("Authentication failed")
                 return
 
-            now = datetime.now()
-            today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            # Get the date range we need to download  
+            start_date, end_date = await self._get_missing_date_range()
+            
+            # Calculate total days to download
+            total_days = (end_date - start_date).days + 1
+            if total_days <= 0:
+                _LOGGER.info("No missing data to download")
+                self._initial_download_complete = True
+                return
+                
+            _LOGGER.info("Downloading %d days of missing data from %s to %s", 
+                        total_days, start_date, end_date)
+
+            # Initialize running sums - for incremental updates, start from 0
+            # since Home Assistant statistics are cumulative and will handle the math
+            kwh_running_sum = 0
+            dollar_running_sum = 0
+            free_kwh_running_sum = 0
 
             kwh_statistics = []
-            kwh_running_sum = 0
             dollar_statistics = []
-            dollar_running_sum = 0
             free_kwh_statistics = []
-            free_kwh_running_sum = 0
             currency = 'NZD'
             
             # Process in chunks to avoid overwhelming the system
             chunk_size = 10
-            total_chunks = (self._usage_days + chunk_size - 1) // chunk_size
+            total_chunks = (total_days + chunk_size - 1) // chunk_size
+            
+            current_date = start_date
+            processed_days = 0
             
             for chunk_num in range(total_chunks):
-                chunk_start = chunk_num * chunk_size
-                chunk_end = min(chunk_start + chunk_size, self._usage_days)
+                chunk_start_day = processed_days
+                chunk_end_day = min(processed_days + chunk_size, total_days)
+                days_in_chunk = chunk_end_day - chunk_start_day
                 
                 _LOGGER.debug("Processing chunk %s/%s (days %s-%s)", 
-                             chunk_num + 1, total_chunks, chunk_start, chunk_end)
+                             chunk_num + 1, total_chunks, chunk_start_day, chunk_end_day)
                 
-                # Process this chunk
-                for i in range(chunk_start, chunk_end):
-                    current_date = today - timedelta(days=self._usage_days - i)
+                # Process this chunk - iterate through the actual dates
+                for day_offset in range(days_in_chunk):
+                    if processed_days >= total_days:
+                        break
+                        
+                    process_date = current_date + timedelta(days=day_offset)
                     
                     try:
                         response = await self._api.get_usage(
-                            str(current_date.year), 
-                            str(current_date.month), 
-                            str(current_date.day)
+                            str(process_date.year), 
+                            str(process_date.month), 
+                            str(process_date.day)
                         )
 
                         if response:
@@ -477,14 +565,17 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
                         
                     except Exception as error:
                         _LOGGER.warning("Failed to fetch data for %s: %s", 
-                                      current_date.strftime("%Y-%m-%d"), error)
+                                      process_date.strftime("%Y-%m-%d"), error)
                         self._download_progress["errors"] += 1
                 
-                # Update progress notification every chunk
-                progress_pct = int((chunk_end / self._usage_days) * 100)
+                # Update progress after each chunk
+                processed_days += days_in_chunk
+                current_date += timedelta(days=days_in_chunk)
+                
+                progress_pct = int((processed_days / total_days) * 100)
                 await async_create(
                     self.hass,
-                    f"Downloaded {chunk_end}/{self._usage_days} days ({progress_pct}%). "
+                    f"Downloaded {processed_days}/{total_days} days ({progress_pct}%). "
                     f"Errors: {self._download_progress['errors']}",
                     title="Contact Energy - Download Progress",
                     notification_id=f"{DOMAIN}_download_{self._icp}"
@@ -497,7 +588,10 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
             await self._add_statistics(kwh_statistics, dollar_statistics, free_kwh_statistics, currency)
             self._state = kwh_running_sum
             self._initial_download_complete = True
-            self._last_usage_update = now
+            self._last_usage_update = datetime.now()
+            
+            # Save the last download date
+            await self._save_last_download_date(end_date)
 
             # Success notification
             await async_create(
