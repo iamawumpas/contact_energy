@@ -24,6 +24,13 @@ NEW_VERSION="${major}.${minor}.${NEW_PATCH}"
 
 echo -e "${GREEN}New version: v${NEW_VERSION}${NC}"
 
+# Check if changelog info is provided as command line arguments
+if [ $# -eq 2 ]; then
+    CHANGELOG_TITLE="$1"
+    CHANGELOG_DESC="$2"
+    echo -e "${YELLOW}Using provided changelog: $CHANGELOG_TITLE${NC}"
+fi
+
 # Confirm with user
 read -p "Proceed with version bump to v${NEW_VERSION}? (y/N): " -n 1 -r
 echo

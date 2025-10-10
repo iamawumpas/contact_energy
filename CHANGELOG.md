@@ -1,5 +1,12 @@
-## v0.3.11 - 2025-10-07
+# CHANGELOG
 
+## v0.4.1 - 2025-10-10
+
+Added Energy Usage Sensors for ApexCharts
+
+Added new electricity and free electricity usage sensors that are available for use in ApexCharts and other dashboard cards while maintaining Energy Dashboard compatibility. These sensors are hidden from the Energy Dashboard to avoid conflicts with existing statistics.
+
+## v0.3.11 - 2025-10-07
 
 Embed logo in README to stabilize HACS rendering
 
