@@ -1,38 +1,5 @@
-## v0.4.6 - 2025-10-10
-
-
-
-
-## v0.4.5 - 2025-10-10
-
-
-
-
-## v0.4.4 - 2025-10-10
-Critical Performance and Stability Fixes
-
-Fixed datetime errors and implemented efficient incremental data downloading. Added persistent storage to prevent API spam, reducing API calls from 260+ to 1-7 per update cycle. Includes intelligent caching with automatic cache expiry detection.
-
-## v0.4.3 - 2025-10-10
-Fixed Bootstrap Timeout and DateTime Errors
-
-Fixed critical bootstrap timeout issues and datetime attribute errors. Improved auto-restart scheduling to prevent Home Assistant startup delays and added proper datetime handling for sensor attributes.
-
-# CHANGELOG
-
-## v0.4.2 - 2025-10-10
-
-Fixed Runtime Errors
-
-Fixed critical runtime errors including AttributeError and TypeError issues that prevented sensors from loading properly. Updated notification system to use proper Home Assistant service calls.
-
-## v0.4.1 - 2025-10-10
-
-Added Energy Usage Sensors for ApexCharts
-
-Added new electricity and free electricity usage sensors that are available for use in ApexCharts and other dashboard cards while maintaining Energy Dashboard compatibility. These sensors are hidden from the Energy Dashboard to avoid conflicts with existing statistics.
-
 ## v0.3.11 - 2025-10-07
+
 
 Embed logo in README to stabilize HACS rendering
 
