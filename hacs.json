@@ -1,6 +1,6 @@
 {
   "name": "Contact Energy",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "render_readme": true,
   "country": ["NZ"],
   "homeassistant": "2024.4.0",

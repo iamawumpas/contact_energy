@@ -1,7 +1,96 @@
+# --- Entity setup function ---
+async def async_setup_entry(
+    hass: HomeAssistant, 
+    entry: ConfigEntry, 
+    async_add_entities: AddEntitiesCallback
+) -> None:
+    """Set up Contact Energy sensor entities from a config entry."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    api = hass.data[DOMAIN][entry.entry_id]["api"]
+    icp = entry.data[CONF_CONTRACT_ICP]
+    usage_days = entry.data.get(CONF_USAGE_DAYS, 10)
+
+    sensors = [
+        ContactEnergyUsageSensor(coordinator, api, icp, usage_days),
+        ContactEnergyDailyConsumptionSensor(coordinator, api, icp, usage_days),
+        ContactEnergyDailyFreeConsumptionSensor(coordinator, api, icp, usage_days),
+        ContactEnergyAccountSensor(
+            coordinator,
+            icp,
+            SENSOR_ACCOUNT_BALANCE_NAME,
+            CURRENCY_DOLLAR,
+            "mdi:cash",
+            None,
+            SensorDeviceClass.MONETARY,
+            lambda data: data.get("accountDetail", {}).get("accountBalance", {}).get("currentBalance"),
+        ),
+        ContactEnergyAccountSensor(
+            coordinator,
+            icp,
+            SENSOR_NEXT_BILL_AMOUNT_NAME,
+            CURRENCY_DOLLAR,
+            "mdi:cash-clock",
+            None,
+            SensorDeviceClass.MONETARY,
+            lambda data: data.get("accountDetail", {}).get("nextBill", {}).get("amount"),
+        ),
+        ContactEnergyAccountSensor(
+            coordinator,
+            icp,
+            SENSOR_NEXT_BILL_DATE_NAME,
+            None,
+            "mdi:calendar",
+            None,
+            SensorDeviceClass.DATE,
+            lambda data: _parse_date(data.get("accountDetail", {}).get("nextBill", {}).get("date")),
+        ),
+        ContactEnergyAccountSensor(
+            coordinator,
+            icp,
+            SENSOR_PAYMENT_DUE_NAME,
+            CURRENCY_DOLLAR,
+            "mdi:cash-marker",
+            None,
+            SensorDeviceClass.MONETARY,
+            lambda data: data.get("accountDetail", {}).get("invoice", {}).get("amountDue"),
+        ),
+        ContactEnergyAccountSensor(
+            coordinator,
+            icp,
+            SENSOR_PAYMENT_DUE_DATE_NAME,
+            None,
+            "mdi:calendar-clock",
+            None,
+            SensorDeviceClass.DATE,
+            lambda data: _parse_date(data.get("accountDetail", {}).get("invoice", {}).get("paymentDueDate")),
+        ),
+        ContactEnergyAccountSensor(
+            coordinator,
+            icp,
+            SENSOR_PREVIOUS_READING_DATE_NAME,
+            None,
+            "mdi:calendar",
+            None,
+            SensorDeviceClass.DATE,
+            lambda data: _parse_meter_reading_date(data, "previousMeterReadingDate"),
+        ),
+        ContactEnergyAccountSensor(
+            coordinator,
+            icp,
+            SENSOR_NEXT_READING_DATE_NAME,
+            None,
+            "mdi:calendar",
+            None,
+            SensorDeviceClass.DATE,
+            lambda data: _parse_meter_reading_date(data, "nextMeterReadDate"),
+        ),
+    ]
+    async_add_entities(sensors, True)
 """Contact Energy sensors - consolidated implementation."""
 
 import asyncio
 import logging
+from homeassistant.helpers.storage import Store
 from datetime import datetime, timedelta, date
 from typing import Any, Callable, Optional
 
@@ -43,47 +132,102 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, 
-    entry: ConfigEntry, 
-    async_add_entities: AddEntitiesCallback
-) -> None:
-    """Set up Contact Energy sensor entities from a config entry."""
-    
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    api = hass.data[DOMAIN][entry.entry_id]["api"]
-    
-    icp = entry.data[CONF_CONTRACT_ICP]
-    usage_days = entry.data.get(CONF_USAGE_DAYS, 10)
 
-    # Create all sensors
-    sensors = [
-        # Usage sensor (special handling for statistics)
-        ContactEnergyUsageSensor(
-            coordinator,
-            api,
-            icp,
-            usage_days
-        ),
-        # Account sensors
-        ContactEnergyAccountSensor(
-            coordinator,
-            icp,
-            SENSOR_ACCOUNT_BALANCE_NAME,
-            CURRENCY_DOLLAR,
-            "mdi:cash",
-            None,  # No state class for monetary sensors
-            SensorDeviceClass.MONETARY,
-            lambda data: data.get("accountDetail", {}).get("accountBalance", {}).get("currentBalance"),
-        ),
-        ContactEnergyAccountSensor(
+# ...existing code...
+
+# Move async_setup_entry below all class definitions
+
+
+# ...existing code...
+
+# Move async_setup_entry to the end of the file
+class ContactEnergyDailyConsumptionSensor(ContactEnergyBaseSensor):
+    """Sensor for daily electricity consumption (kWh)."""
+    def __init__(self, coordinator, api, icp: str, usage_days: int = 10):
+        super().__init__(
             coordinator,
             icp,
-            SENSOR_NEXT_BILL_AMOUNT_NAME,
-            CURRENCY_DOLLAR,
-            "mdi:cash-clock",
-            None,  # No state class for monetary sensors
-            SensorDeviceClass.MONETARY,
+            "Daily Consumption",
+            UnitOfEnergy.KILO_WATT_HOUR,
+            "mdi:meter-electric",
+            SensorStateClass.MEASUREMENT,
+            SensorDeviceClass.ENERGY,
+        )
+        self._api = api
+        self._usage_days = usage_days
+        self._state = 0
+        self._last_date = None
+
+
+    # Daily Consumption Sensor
+    class ContactEnergyDailyConsumptionSensor(ContactEnergyBaseSensor):
+        """Sensor for daily electricity consumption (kWh)."""
+        def __init__(self, coordinator, api, icp: str, usage_days: int = 10):
+            super().__init__(
+                coordinator,
+                icp,
+                "Daily Consumption",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                "mdi:meter-electric",
+                SensorStateClass.MEASUREMENT,
+                SensorDeviceClass.ENERGY,
+            )
+            self._api = api
+            self._usage_days = usage_days
+            self._state = 0
+            self._last_date = None
+
+        @property
+        def native_value(self) -> float:
+            return self._state
+
+        async def async_update(self) -> None:
+            today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            response = await self._api.get_usage(str(today.year), str(today.month), str(today.day))
+            daily_kwh = 0
+            if response:
+                for point in response:
+                    offpeak_value_str = str(point.get("offpeakValue", "0.00"))
+                    value_float = ContactEnergyUsageSensor._safe_float(point.get("value"))
+                    if offpeak_value_str == "0.00":
+                        daily_kwh += value_float
+            self._state = daily_kwh
+            self._last_date = today
+
+    # Daily Free Consumption Sensor
+    class ContactEnergyDailyFreeConsumptionSensor(ContactEnergyBaseSensor):
+        """Sensor for daily free electricity consumption (kWh)."""
+        def __init__(self, coordinator, api, icp: str, usage_days: int = 10):
+            super().__init__(
+                coordinator,
+                icp,
+                "Daily Free Consumption",
+                UnitOfEnergy.KILO_WATT_HOUR,
+                "mdi:meter-electric-outline",
+                SensorStateClass.MEASUREMENT,
+                SensorDeviceClass.ENERGY,
+            )
+            self._api = api
+            self._usage_days = usage_days
+            self._state = 0
+            self._last_date = None
+
+        @property
+        def native_value(self) -> float:
+            return self._state
+
+        async def async_update(self) -> None:
+            today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            response = await self._api.get_usage(str(today.year), str(today.month), str(today.day))
+            daily_free_kwh = 0
+            if response:
+                for point in response:
+                    offpeak_value_str = str(point.get("offpeakValue", "0.00"))
+                    value_float = ContactEnergyUsageSensor._safe_float(point.get("value"))
+                    if offpeak_value_str != "0.00":
+                        daily_free_kwh += value_float
+            self._state = daily_free_kwh
+            self._last_date = today
             lambda data: data.get("accountDetail", {}).get("nextBill", {}).get("amount"),
         ),
         ContactEnergyAccountSensor(
@@ -129,96 +273,6 @@ async def async_setup_entry(
         ContactEnergyAccountSensor(
             coordinator,
             icp,
-            SENSOR_NEXT_READING_DATE_NAME,
-            None,
-            "mdi:calendar",
-            None,
-            SensorDeviceClass.DATE,
-            lambda data: _parse_meter_reading_date(data, "nextMeterReadDate"),
-        ),
-    ]
-
-    async_add_entities(sensors, True)
-
-
-def _parse_date(date_str: str) -> date | None:
-    """Parse date string from Contact Energy API."""
-    if not date_str:
-        return None
-    try:
-        return datetime.strptime(date_str, "%d %b %Y").date()
-    except (ValueError, TypeError):
-        return None
-
-
-def _parse_meter_reading_date(data: dict, field_name: str) -> date | None:
-    """Parse meter reading date from nested structure."""
-    try:
-        contracts = data.get("accountDetail", {}).get("contracts", [])
-        if contracts and contracts[0].get("devices"):
-            devices = contracts[0]["devices"]
-            if devices and devices[0].get("registers"):
-                registers = devices[0]["registers"]
-                if registers:
-                    date_str = registers[0].get(field_name)
-                    return _parse_date(date_str)
-    except (IndexError, KeyError, TypeError):
-        pass
-    return None
-
-
-class ContactEnergyBaseSensor(CoordinatorEntity, SensorEntity):
-    """Base class for Contact Energy sensors."""
-
-    def __init__(
-        self,
-        coordinator,
-        icp: str,
-        name: str,
-        unit: str | None,
-        icon: str,
-        state_class: SensorStateClass | None = None,
-        device_class: SensorDeviceClass | None = None,
-    ) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator)
-        self._icp = icp
-        self._attr_name = name
-        self._attr_unique_id = f"{DOMAIN}_{icp}_{name.lower().replace(' ', '_')}"
-        self._attr_native_unit_of_measurement = unit
-        self._attr_icon = icon
-        self._attr_state_class = state_class
-        self._attr_device_class = device_class
-
-    @property
-    def device_info(self) -> dict[str, Any]:
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self._icp)},
-            "name": f"{NAME} - {self._icp}",
-            "manufacturer": NAME,
-            "model": "Smart Meter",
-        }
-
-
-class ContactEnergyAccountSensor(ContactEnergyBaseSensor):
-    """Sensor for Contact Energy account information."""
-
-    def __init__(
-        self,
-        coordinator,
-        icp: str,
-        name: str,
-        unit: str | None,
-        icon: str,
-        state_class: SensorStateClass | None,
-        device_class: SensorDeviceClass | None,
-        value_fn: Callable[[dict], Any],
-    ) -> None:
-        """Initialize the account sensor."""
-        super().__init__(coordinator, icp, name, unit, icon, state_class, device_class)
-        self._value_fn = value_fn
-
     @property
     def native_value(self) -> Any:
         """Return the state of the sensor."""
@@ -596,31 +650,27 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
     async def _load_stored_data(self):
         """Load previously stored statistics data."""
         try:
-            store = self.hass.helpers.storage.Store(1, self._storage_key)
+            store = Store(self.hass, 1, self._storage_key)
             self._stored_data = await store.async_load() or {}
-            
             if self._stored_data:
-                # Check if we have recent data
                 last_update = self._stored_data.get("last_update")
                 if last_update:
                     last_update_date = datetime.fromisoformat(last_update)
                     days_since_update = (datetime.now() - last_update_date).days
-                    
-                    # If data is recent (within 2 days), consider initial download complete
                     if days_since_update < 2:
                         self._initial_download_complete = True
                         self._state = self._stored_data.get("total_usage", 0)
-                        _LOGGER.info("Loaded cached usage data for %s: %.2f kWh", 
-                                   self._icp, self._state)
-                        
+                        # Reduce log level to debug to avoid excessive info logs
+                        _LOGGER.debug("Loaded cached usage data for %s: %.2f kWh", self._icp, self._state)
         except Exception as error:
-            _LOGGER.warning("Failed to load stored data for %s: %s", self._icp, error)
+            # Reduce log level to debug to avoid excessive warnings
+            _LOGGER.debug("Failed to load stored data for %s: %s", self._icp, error)
             self._stored_data = {}
 
     async def _save_stored_data(self, total_usage: float, statistics_data: dict):
         """Save statistics data to storage."""
         try:
-            store = self.hass.helpers.storage.Store(1, self._storage_key)
+            store = Store(self.hass, 1, self._storage_key)
             data = {
                 "last_update": datetime.now().isoformat(),
                 "total_usage": total_usage,
@@ -628,6 +678,9 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
                 "usage_days": self._usage_days
             }
             await store.async_save(data)
+        except Exception as error:
+            # Reduce log level to debug to avoid excessive warnings
+            _LOGGER.debug("Failed to save stored data for %s: %s", self._icp, error)
             self._stored_data = data
             _LOGGER.debug("Saved usage data for %s: %.2f kWh", self._icp, total_usage)
             

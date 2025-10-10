@@ -1,3 +1,8 @@
+## v0.4.5 - 2025-10-10
+
+
+
+
 ## v0.4.4 - 2025-10-10
 Critical Performance and Stability Fixes
 
