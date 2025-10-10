@@ -500,8 +500,12 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
                 if daily_free_kwh > 0:
                     free_kwh_statistics.append(StatisticData(start=day_start, sum=free_kwh_running_sum))
 
-        # Update Home Assistant statistics only with new data
+        # Limit statistics lists to the most recent 30 days
+        MAX_STATS_DAYS = 30
         if kwh_statistics:
+            kwh_statistics = kwh_statistics[-MAX_STATS_DAYS:]
+            dollar_statistics = dollar_statistics[-MAX_STATS_DAYS:]
+            free_kwh_statistics = free_kwh_statistics[-MAX_STATS_DAYS:]
             await self._add_statistics(kwh_statistics, dollar_statistics, free_kwh_statistics, currency)
             
         # Save updated totals to storage
@@ -609,7 +613,11 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
                 # Add small delay between chunks to be nice to the API
                 await asyncio.sleep(1)
 
-            # Update Home Assistant statistics
+            # Limit statistics lists to the most recent 30 days
+            MAX_STATS_DAYS = 30
+            kwh_statistics = kwh_statistics[-MAX_STATS_DAYS:]
+            dollar_statistics = dollar_statistics[-MAX_STATS_DAYS:]
+            free_kwh_statistics = free_kwh_statistics[-MAX_STATS_DAYS:]
             await self._add_statistics(kwh_statistics, dollar_statistics, free_kwh_statistics, currency)
             self._state = kwh_running_sum
             self._initial_download_complete = True
