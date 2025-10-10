@@ -1,3 +1,8 @@
+## v0.3.12 - 2025-10-10
+
+
+Fixed error where self.coordinator.last_update_success_time doesn't exist on DataUpdateCoordinator object
+
 ## v0.3.11 - 2025-10-07
 
 
