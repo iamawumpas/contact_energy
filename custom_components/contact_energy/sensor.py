@@ -235,11 +235,9 @@ class ContactEnergyAccountSensor(ContactEnergyBaseSensor):
         """Return additional state attributes."""
         attrs = {}
         
-        # Use last_update_success_time for datetime, fallback to data timestamp
+        # Use last_update_success_time for datetime if available
         if hasattr(self.coordinator, 'last_update_success_time') and self.coordinator.last_update_success_time:
             attrs["last_updated"] = self.coordinator.last_update_success_time.isoformat()
-        elif self.coordinator.data and "last_update" in self.coordinator.data and self.coordinator.data["last_update"]:
-            attrs["last_updated"] = self.coordinator.data["last_update"].isoformat()
         
         # Add payment history for monetary sensors
         if (self._attr_device_class == SensorDeviceClass.MONETARY and 
@@ -282,6 +280,8 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
         self._initial_download_complete = False
         self._download_task = None
         self._download_progress = {"completed": 0, "total": usage_days, "errors": 0}
+        self._stored_data = None  # Will hold cached statistics data
+        self._storage_key = f"contact_energy_usage_{self._icp}"
 
     @property
     def native_value(self) -> float:
@@ -296,6 +296,9 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
     async def async_added_to_hass(self) -> None:
         """Called when entity is added to Home Assistant."""
         await super().async_added_to_hass()
+        
+        # Load existing data from storage
+        await self._load_stored_data()
         
         # Start background download for large datasets
         if self._usage_days > 30 and not self._initial_download_complete:
@@ -347,7 +350,7 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
                 _LOGGER.error("Failed to update usage statistics: %s", error)
 
     async def _update_usage_statistics(self) -> None:
-        """Fetch usage data and update Home Assistant statistics."""
+        """Fetch recent usage data and update statistics incrementally."""
         if not self._api._api_token and not await self._api.async_login():
             _LOGGER.error("Failed to login for usage data")
             return
@@ -355,17 +358,51 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
         now = datetime.now()
         today = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
+        # Determine how many days to fetch based on stored data
+        days_to_fetch = 1  # Default: just fetch yesterday and today
+        start_date = today - timedelta(days=1)
+        
+        if self._stored_data and "last_update" in self._stored_data:
+            try:
+                last_update = datetime.fromisoformat(self._stored_data["last_update"])
+                days_since_update = (now - last_update).days
+                # Fetch missing days plus a small buffer
+                days_to_fetch = min(days_since_update + 2, 7)  # Max 7 days
+                start_date = today - timedelta(days=days_to_fetch)
+                _LOGGER.debug("Incremental update: fetching %s days since %s", 
+                             days_to_fetch, last_update.date())
+            except (ValueError, TypeError):
+                _LOGGER.warning("Invalid last_update in stored data, fetching recent days")
+        else:
+            # No stored data, but don't fetch everything - just recent days
+            days_to_fetch = min(self._usage_days, 30)  # Max 30 days for initial
+            start_date = today - timedelta(days=days_to_fetch)
+            _LOGGER.info("No stored data found, fetching recent %s days", days_to_fetch)
+
+        # Load existing statistics from storage
         kwh_statistics = []
-        kwh_running_sum = 0
         dollar_statistics = []
-        dollar_running_sum = 0
         free_kwh_statistics = []
+        kwh_running_sum = 0
+        dollar_running_sum = 0
         free_kwh_running_sum = 0
         currency = 'NZD'
+        
+        if self._stored_data and "statistics" in self._stored_data:
+            # Load existing data
+            stored_stats = self._stored_data["statistics"]
+            kwh_running_sum = stored_stats.get("kwh_total", 0)
+            dollar_running_sum = stored_stats.get("dollar_total", 0)
+            free_kwh_running_sum = stored_stats.get("free_kwh_total", 0)
+            currency = stored_stats.get("currency", "NZD")
 
-        for i in range(self._usage_days):
-            current_date = today - timedelta(days=self._usage_days - i)
-            _LOGGER.debug("Fetching usage data for %s", current_date.strftime("%Y-%m-%d"))
+        # Fetch only recent days
+        for i in range(days_to_fetch):
+            current_date = start_date + timedelta(days=i)
+            if current_date > today:
+                break
+                
+            _LOGGER.debug("Fetching incremental usage data for %s", current_date.strftime("%Y-%m-%d"))
             
             response = await self._api.get_usage(
                 str(current_date.year), 
@@ -374,8 +411,11 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
             )
 
             if not response:
-                _LOGGER.debug("No data available for %s", current_date.strftime("%Y-%m-%d"))
                 continue
+
+            daily_kwh = 0
+            daily_dollar = 0
+            daily_free_kwh = 0
 
             for point in response:
                 if point.get('currency') and currency != point['currency']:
@@ -388,25 +428,38 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
 
                 # If offpeak value is not '0.00', the energy is free
                 if offpeak_value_str == "0.00":
-                    kwh_running_sum += value_float
-                    dollar_running_sum += dollar_value_float
+                    daily_kwh += value_float
+                    daily_dollar += dollar_value_float
                 else:
-                    free_kwh_running_sum += value_float
+                    daily_free_kwh += value_float
 
-                # Parse date safely
-                try:
-                    date_obj = datetime.strptime(point["date"], "%Y-%m-%dT%H:%M:%S.%f%z")
-                except (ValueError, TypeError, KeyError):
-                    date_obj = current_date
+            # Update running totals
+            kwh_running_sum += daily_kwh
+            dollar_running_sum += daily_dollar
+            free_kwh_running_sum += daily_free_kwh
 
-                # Add to statistics
-                kwh_statistics.append(StatisticData(start=date_obj, sum=kwh_running_sum))
-                dollar_statistics.append(StatisticData(start=date_obj, sum=dollar_running_sum))
-                free_kwh_statistics.append(StatisticData(start=date_obj, sum=free_kwh_running_sum))
+            # Create statistics entries for this day
+            if daily_kwh > 0 or daily_dollar > 0 or daily_free_kwh > 0:
+                day_start = current_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                kwh_statistics.append(StatisticData(start=day_start, sum=kwh_running_sum))
+                dollar_statistics.append(StatisticData(start=day_start, sum=dollar_running_sum))
+                if daily_free_kwh > 0:
+                    free_kwh_statistics.append(StatisticData(start=day_start, sum=free_kwh_running_sum))
 
-        # Update Home Assistant statistics
-        await self._add_statistics(kwh_statistics, dollar_statistics, free_kwh_statistics, currency)
+        # Update Home Assistant statistics only with new data
+        if kwh_statistics:
+            await self._add_statistics(kwh_statistics, dollar_statistics, free_kwh_statistics, currency)
+            
+        # Save updated totals to storage
+        await self._save_stored_data(kwh_running_sum, {
+            "kwh_total": kwh_running_sum,
+            "dollar_total": dollar_running_sum, 
+            "free_kwh_total": free_kwh_running_sum,
+            "currency": currency
+        })
+        
         self._state = kwh_running_sum
+        _LOGGER.info("Updated usage statistics: %.2f kWh total (incremental update)", kwh_running_sum)
 
     async def _background_download_all_data(self) -> None:
         """Download all historical data in the background with progress updates."""
@@ -539,6 +592,47 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
                 "notification_id": f"{DOMAIN}_download_error_{self._icp}"
             }
         )
+
+    async def _load_stored_data(self):
+        """Load previously stored statistics data."""
+        try:
+            store = self.hass.helpers.storage.Store(1, self._storage_key)
+            self._stored_data = await store.async_load() or {}
+            
+            if self._stored_data:
+                # Check if we have recent data
+                last_update = self._stored_data.get("last_update")
+                if last_update:
+                    last_update_date = datetime.fromisoformat(last_update)
+                    days_since_update = (datetime.now() - last_update_date).days
+                    
+                    # If data is recent (within 2 days), consider initial download complete
+                    if days_since_update < 2:
+                        self._initial_download_complete = True
+                        self._state = self._stored_data.get("total_usage", 0)
+                        _LOGGER.info("Loaded cached usage data for %s: %.2f kWh", 
+                                   self._icp, self._state)
+                        
+        except Exception as error:
+            _LOGGER.warning("Failed to load stored data for %s: %s", self._icp, error)
+            self._stored_data = {}
+
+    async def _save_stored_data(self, total_usage: float, statistics_data: dict):
+        """Save statistics data to storage."""
+        try:
+            store = self.hass.helpers.storage.Store(1, self._storage_key)
+            data = {
+                "last_update": datetime.now().isoformat(),
+                "total_usage": total_usage,
+                "statistics": statistics_data,
+                "usage_days": self._usage_days
+            }
+            await store.async_save(data)
+            self._stored_data = data
+            _LOGGER.debug("Saved usage data for %s: %.2f kWh", self._icp, total_usage)
+            
+        except Exception as error:
+            _LOGGER.warning("Failed to save stored data for %s: %s", self._icp, error)
 
     @staticmethod
     def _safe_float(value: Any) -> float:
