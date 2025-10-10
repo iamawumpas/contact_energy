@@ -1,3 +1,8 @@
+## v0.4.3 - 2025-10-10
+Fixed Bootstrap Timeout and DateTime Errors
+
+Fixed critical bootstrap timeout issues and datetime attribute errors. Improved auto-restart scheduling to prevent Home Assistant startup delays and added proper datetime handling for sensor attributes.
+
 # CHANGELOG
 
 ## v0.4.2 - 2025-10-10

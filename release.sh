@@ -25,18 +25,25 @@ NEW_VERSION="${major}.${minor}.${NEW_PATCH}"
 echo -e "${GREEN}New version: v${NEW_VERSION}${NC}"
 
 # Check if changelog info is provided as command line arguments
+AUTO_MODE=false
 if [ $# -eq 2 ]; then
     CHANGELOG_TITLE="$1"
     CHANGELOG_DESC="$2"
+    AUTO_MODE=true
     echo -e "${YELLOW}Using provided changelog: $CHANGELOG_TITLE${NC}"
+    echo -e "${YELLOW}Running in automated mode${NC}"
 fi
 
-# Confirm with user
-read -p "Proceed with version bump to v${NEW_VERSION}? (y/N): " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${RED}Release cancelled${NC}"
-    exit 1
+# Confirm with user only if not in auto mode
+if [ "$AUTO_MODE" = false ]; then
+    read -p "Proceed with version bump to v${NEW_VERSION}? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${RED}Release cancelled${NC}"
+        exit 1
+    fi
+else
+    echo -e "${GREEN}Proceeding with automated version bump to v${NEW_VERSION}${NC}"
 fi
 
 # Update version in manifest.json
@@ -59,10 +66,14 @@ sed -i "s/version: ${CURRENT_VERSION}/version: ${NEW_VERSION}/" info.md
 echo -e "${YELLOW}Updating hacs.json...${NC}"
 sed -i "s/\"version\": \"${CURRENT_VERSION}\"/\"version\": \"${NEW_VERSION}\"/" hacs.json
 
-# Prompt for changelog entry
-echo -e "${YELLOW}Enter changelog entry for v${NEW_VERSION}:${NC}"
-read -p "Title: " CHANGELOG_TITLE
-read -p "Description: " CHANGELOG_DESC
+# Prompt for changelog entry (only if not in auto mode)
+if [ "$AUTO_MODE" = false ]; then
+    echo -e "${YELLOW}Enter changelog entry for v${NEW_VERSION}:${NC}"
+    read -p "Title: " CHANGELOG_TITLE
+    read -p "Description: " CHANGELOG_DESC
+else
+    echo -e "${YELLOW}Using provided changelog for v${NEW_VERSION}${NC}"
+fi
 
 # Update CHANGELOG.md
 echo -e "${YELLOW}Updating CHANGELOG.md...${NC}"

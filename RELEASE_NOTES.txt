@@ -1,5 +1,5 @@
-## v0.4.2 - 2025-10-10
-Fixed Runtime Errors
+## v0.4.3 - 2025-10-10
+Fixed Bootstrap Timeout and DateTime Errors
 
-Fixed critical runtime errors including AttributeError and TypeError issues that prevented sensors from loading properly. Updated notification system to use proper Home Assistant service calls.
+Fixed critical bootstrap timeout issues and datetime attribute errors. Improved auto-restart scheduling to prevent Home Assistant startup delays and added proper datetime handling for sensor attributes.
 
