@@ -1,3 +1,8 @@
+## v0.4.4 - 2025-10-10
+Critical Performance and Stability Fixes
+
+Fixed datetime errors and implemented efficient incremental data downloading. Added persistent storage to prevent API spam, reducing API calls from 260+ to 1-7 per update cycle. Includes intelligent caching with automatic cache expiry detection.
+
 ## v0.4.3 - 2025-10-10
 Fixed Bootstrap Timeout and DateTime Errors
 
