@@ -4,8 +4,8 @@
 # Automated version bumping and release preparation
 # 
 # Usage:
-#   ./release.sh                           # Auto-increment patch version, prompt for changelog
-#   ./release.sh 0.3.13                   # Use specific version, prompt for changelog  
+#   ./release.sh                           # Auto-increment patch version, auto-generate changelog
+#   ./release.sh 0.3.13                   # Use specific version, auto-generate changelog  
 #   ./release.sh 0.3.13 "Title" "Desc"    # Fully automated with version and changelog
 
 set -e
@@ -79,18 +79,37 @@ sed -i "s/version: ${CURRENT_VERSION}/version: ${NEW_VERSION}/" info.md
 echo -e "${YELLOW}Updating hacs.json...${NC}"
 sed -i "s/\"version\": \"${CURRENT_VERSION}\"/\"version\": \"${NEW_VERSION}\"/" hacs.json
 
-# Prompt for changelog entry (only if not in auto mode or if no changelog provided)
+# Generate automatic changelog entry
 if [ "$AUTO_MODE" = false ]; then
     echo -e "${YELLOW}Enter changelog entry for v${NEW_VERSION}:${NC}"
     read -p "Title: " CHANGELOG_TITLE
     read -p "Description: " CHANGELOG_DESC
 elif [ -z "$CHANGELOG_TITLE" ]; then
-    # Auto mode but no changelog provided - prompt for it
-    echo -e "${YELLOW}Enter changelog entry for v${NEW_VERSION}:${NC}"
-    echo -e "${YELLOW}Title: ${NC}"
-    read CHANGELOG_TITLE
-    echo -e "${YELLOW}Description: ${NC}"
-    read CHANGELOG_DESC
+    # Auto mode but no changelog provided - generate automatically
+    echo -e "${YELLOW}Generating automatic changelog for v${NEW_VERSION}${NC}"
+    
+    # Get recent commits since last tag to auto-generate changelog
+    LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+    if [ -n "$LAST_TAG" ]; then
+        # Get commits since last tag
+        RECENT_COMMITS=$(git log --oneline "${LAST_TAG}..HEAD" --no-merges | head -5)
+        if [ -n "$RECENT_COMMITS" ]; then
+            CHANGELOG_TITLE="Version ${NEW_VERSION} - Bug fixes and improvements"
+            CHANGELOG_DESC="Recent changes:
+$(echo "$RECENT_COMMITS" | sed 's/^[a-f0-9]* /- /')"
+        else
+            CHANGELOG_TITLE="Version ${NEW_VERSION} - Minor update"
+            CHANGELOG_DESC="- Version bump and maintenance updates"
+        fi
+    else
+        CHANGELOG_TITLE="Version ${NEW_VERSION} - Initial release"
+        CHANGELOG_DESC="- First release of Contact Energy integration"
+    fi
+    
+    echo -e "${GREEN}Auto-generated changelog:${NC}"
+    echo -e "${YELLOW}Title:${NC} $CHANGELOG_TITLE"
+    echo -e "${YELLOW}Description:${NC}"
+    echo "$CHANGELOG_DESC"
 else
     echo -e "${YELLOW}Using provided changelog for v${NEW_VERSION}${NC}"
 fi
