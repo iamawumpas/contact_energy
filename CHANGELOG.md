@@ -1,7 +1,8 @@
 ## v0.3.12 - 2025-10-10
 
-
 Energy usage sensors implementation complete
+
+Implemented comprehensive energy usage tracking with statistics for Contact Energy integration, including main energy consumption, free energy consumption, and electricity cost tracking.
 
 ## v0.3.11 - 2025-10-07
 
