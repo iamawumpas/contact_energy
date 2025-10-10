@@ -2,6 +2,11 @@
 
 # Contact Energy Integration Release Script
 # Automated version bumping and release preparation
+# 
+# Usage:
+#   ./release.sh                           # Auto-increment patch version, prompt for changelog
+#   ./release.sh 0.3.13                   # Use specific version, prompt for changelog  
+#   ./release.sh 0.3.13 "Title" "Desc"    # Fully automated with version and changelog
 
 set -e
 
@@ -15,23 +20,31 @@ NC='\033[0m' # No Color
 CURRENT_VERSION=$(grep '"version"' custom_components/contact_energy/manifest.json | sed 's/.*"v\([^"]*\)".*/\1/')
 echo -e "${YELLOW}Current version: v${CURRENT_VERSION}${NC}"
 
-# Parse version parts
-IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
-
-# Increment patch version
-NEW_PATCH=$((patch + 1))
-NEW_VERSION="${major}.${minor}.${NEW_PATCH}"
-
-echo -e "${GREEN}New version: v${NEW_VERSION}${NC}"
-
-# Check if changelog info is provided as command line arguments
+# Check command line arguments
 AUTO_MODE=false
-if [ $# -eq 2 ]; then
-    CHANGELOG_TITLE="$1"
-    CHANGELOG_DESC="$2"
+if [ $# -eq 1 ]; then
+    # Version number provided
+    NEW_VERSION="$1"
+    echo -e "${GREEN}New version: v${NEW_VERSION}${NC}"
+    CHANGELOG_TITLE=""
+    CHANGELOG_DESC=""
     AUTO_MODE=true
+    echo -e "${YELLOW}Running in automated mode with version v${NEW_VERSION}${NC}"
+elif [ $# -eq 3 ]; then
+    # Version, title, and description provided
+    NEW_VERSION="$1"
+    CHANGELOG_TITLE="$2"
+    CHANGELOG_DESC="$3"
+    AUTO_MODE=true
+    echo -e "${GREEN}New version: v${NEW_VERSION}${NC}"
     echo -e "${YELLOW}Using provided changelog: $CHANGELOG_TITLE${NC}"
     echo -e "${YELLOW}Running in automated mode${NC}"
+else
+    # No arguments - auto-increment patch version
+    IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+    NEW_PATCH=$((patch + 1))
+    NEW_VERSION="${major}.${minor}.${NEW_PATCH}"
+    echo -e "${GREEN}New version: v${NEW_VERSION}${NC}"
 fi
 
 # Confirm with user only if not in auto mode
@@ -66,11 +79,18 @@ sed -i "s/version: ${CURRENT_VERSION}/version: ${NEW_VERSION}/" info.md
 echo -e "${YELLOW}Updating hacs.json...${NC}"
 sed -i "s/\"version\": \"${CURRENT_VERSION}\"/\"version\": \"${NEW_VERSION}\"/" hacs.json
 
-# Prompt for changelog entry (only if not in auto mode)
+# Prompt for changelog entry (only if not in auto mode or if no changelog provided)
 if [ "$AUTO_MODE" = false ]; then
     echo -e "${YELLOW}Enter changelog entry for v${NEW_VERSION}:${NC}"
     read -p "Title: " CHANGELOG_TITLE
     read -p "Description: " CHANGELOG_DESC
+elif [ -z "$CHANGELOG_TITLE" ]; then
+    # Auto mode but no changelog provided - prompt for it
+    echo -e "${YELLOW}Enter changelog entry for v${NEW_VERSION}:${NC}"
+    echo -e "${YELLOW}Title: ${NC}"
+    read CHANGELOG_TITLE
+    echo -e "${YELLOW}Description: ${NC}"
+    read CHANGELOG_DESC
 else
     echo -e "${YELLOW}Using provided changelog for v${NEW_VERSION}${NC}"
 fi
