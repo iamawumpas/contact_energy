@@ -207,10 +207,24 @@ class ContactEnergyCoordinator(DataUpdateCoordinator):
         # Fetch account data
         account_data = await self.api.async_get_accounts()
         
-        # Fetch usage data will be handled by the usage sensor directly
-        # to avoid loading all historical data during every coordinator update
+        # Initialize data structure for the new sensors
+        usage_data = {}
+        
+        # Get account details to find ICPs for the new sensors
+        if account_data and "accountDetail" in account_data:
+            contracts = account_data.get("accountDetail", {}).get("contracts", [])
+            for contract in contracts:
+                if "icp" in contract:
+                    icp_number = contract["icp"]
+                    # Just store the ICP info, actual usage calculation will be done by individual sensors
+                    usage_data[icp_number] = {
+                        "icp_number": icp_number,
+                        "last_reading_date": None,  # Will be updated by usage sensors if available
+                        "daily_average_kwh": None,
+                    }
         
         return {
             "account": account_data,
+            "usage": usage_data,
             "last_update": self.last_update_success,
         }

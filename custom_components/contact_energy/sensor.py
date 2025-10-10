@@ -21,7 +21,8 @@ from homeassistant.const import (
     CURRENCY_DOLLAR,
     CONF_EMAIL,
     CONF_PASSWORD,
-    UnitOfEnergy
+    UnitOfEnergy,
+    EntityCategory
 )
 
 from .const import (
@@ -138,6 +139,15 @@ async def async_setup_entry(
             lambda data: _parse_meter_reading_date(data, "nextMeterReadDate"),
         ),
     ]
+
+    # Add new energy usage sensors for each ICP (hidden from Energy Dashboard)
+    if coordinator.data and "usage" in coordinator.data:
+        for icp_number in coordinator.data["usage"].keys():
+            # Regular electricity usage sensor
+            sensors.append(ContactEnergyElectricityUsageSensor(coordinator, icp_number))
+            
+            # Free electricity usage sensor (always add - will hide itself if no free electricity)
+            sensors.append(ContactEnergyFreeUsageSensor(coordinator, icp_number))
 
     async_add_entities(sensors, True)
 
@@ -574,3 +584,184 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
             unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         )
         async_add_external_statistics(self.hass, free_kwh_metadata, free_kwh_stats)
+
+
+class ContactEnergyElectricityUsageSensor(ContactEnergyBaseSensor):
+    """Contact Energy Electricity Usage Sensor."""
+    
+    def __init__(self, coordinator, icp_number):
+        super().__init__(
+            coordinator,
+            icp_number,
+            f"Contact Energy {icp_number} Electricity Usage",
+            UnitOfEnergy.KILO_WATT_HOUR,
+            "mdi:flash"
+        )
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Hide from Energy Dashboard
+        self._cumulative_value = 0
+        self._last_update = None
+        
+    @property
+    def native_value(self):
+        """Return the native value of the sensor."""
+        return self._cumulative_value
+
+    async def async_update(self):
+        """Update the sensor with latest cumulative electricity usage."""
+        # Only update once per day to avoid excessive API calls
+        now = datetime.now()
+        if self._last_update and (now - self._last_update).days == 0:
+            return
+            
+        try:
+            # Get last 30 days of usage to calculate cumulative total
+            api = self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]["api"]
+            if not api._api_token and not await api.async_login():
+                return
+                
+            total_electricity = 0
+            today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            
+            # Fetch last 30 days
+            for i in range(30):
+                current_date = today - timedelta(days=i)
+                response = await api.get_usage(
+                    str(current_date.year), 
+                    str(current_date.month), 
+                    str(current_date.day)
+                )
+                
+                if response:
+                    for point in response:
+                        # Only count regular electricity (not free electricity)
+                        offpeak_value_str = str(point.get("offpeakValue", "0.00"))
+                        if offpeak_value_str == "0.00":  # Regular electricity
+                            value_float = self._safe_float(point.get("value"))
+                            total_electricity += value_float
+            
+            self._cumulative_value = total_electricity
+            self._last_update = now
+            
+        except Exception as e:
+            _LOGGER.warning("Failed to update electricity usage for %s: %s", self._icp, e)
+
+    def _safe_float(self, value) -> float:
+        """Safely convert value to float."""
+        try:
+            return float(value or 0)
+        except (ValueError, TypeError):
+            return 0.0
+    
+    @property
+    def extra_state_attributes(self):
+        """Return additional state attributes."""
+        if not self.coordinator.data:
+            return {}
+            
+        usage_data = self.coordinator.data.get("usage", {})
+        icp_data = usage_data.get(self._icp, {})
+        
+        return {
+            "icp_number": self._icp,
+            "last_reading_date": icp_data.get("last_reading_date"),
+            "daily_average": icp_data.get("daily_average_kwh"),
+            "data_source": "contact_energy_api",
+            "last_update": self._last_update.isoformat() if self._last_update else None,
+        }
+
+
+class ContactEnergyFreeUsageSensor(ContactEnergyBaseSensor):
+    """Contact Energy Free Usage Sensor."""
+    
+    def __init__(self, coordinator, icp_number):
+        super().__init__(
+            coordinator,
+            icp_number,
+            f"Contact Energy {icp_number} Free Usage",
+            UnitOfEnergy.KILO_WATT_HOUR,
+            "mdi:flash-outline"
+        )
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC  # Hide from Energy Dashboard
+        self._cumulative_value = 0
+        self._last_update = None
+        
+    @property
+    def native_value(self):
+        """Return the native value of the sensor."""
+        return self._cumulative_value
+
+    async def async_update(self):
+        """Update the sensor with latest cumulative free electricity usage."""
+        # Only update once per day to avoid excessive API calls
+        now = datetime.now()
+        if self._last_update and (now - self._last_update).days == 0:
+            return
+            
+        try:
+            # Get last 30 days of usage to calculate cumulative total
+            api = self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]["api"]
+            if not api._api_token and not await api.async_login():
+                return
+                
+            total_free_electricity = 0
+            today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            
+            # Fetch last 30 days
+            for i in range(30):
+                current_date = today - timedelta(days=i)
+                response = await api.get_usage(
+                    str(current_date.year), 
+                    str(current_date.month), 
+                    str(current_date.day)
+                )
+                
+                if response:
+                    for point in response:
+                        # Only count free electricity (offpeak value not '0.00')
+                        offpeak_value_str = str(point.get("offpeakValue", "0.00"))
+                        if offpeak_value_str != "0.00":  # Free electricity
+                            value_float = self._safe_float(point.get("value"))
+                            total_free_electricity += value_float
+            
+            self._cumulative_value = total_free_electricity
+            self._last_update = now
+            
+        except Exception as e:
+            _LOGGER.warning("Failed to update free electricity usage for %s: %s", self._icp, e)
+
+    def _safe_float(self, value) -> float:
+        """Safely convert value to float."""
+        try:
+            return float(value or 0)
+        except (ValueError, TypeError):
+            return 0.0
+
+    @property
+    def available(self):
+        """Return if sensor is available."""
+        if not super().available:
+            return False
+            
+        # Only available if there's actually free electricity usage
+        return self._cumulative_value > 0
+
+    @property
+    def extra_state_attributes(self):
+        """Return additional state attributes."""
+        if not self.coordinator.data:
+            return {}
+            
+        usage_data = self.coordinator.data.get("usage", {})
+        icp_data = usage_data.get(self._icp, {})
+        
+        return {
+            "icp_number": self._icp,
+            "last_reading_date": icp_data.get("last_reading_date"),
+            "daily_average": icp_data.get("daily_average_free_kwh"),
+            "data_source": "contact_energy_api",
+            "last_update": self._last_update.isoformat() if self._last_update else None,
+        }
