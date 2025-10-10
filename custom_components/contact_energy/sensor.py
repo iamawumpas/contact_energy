@@ -16,7 +16,6 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.components.recorder.models import StatisticData, StatisticMetaData
 from homeassistant.components.recorder.statistics import async_add_external_statistics
-from homeassistant.components.persistent_notification import async_create, async_dismiss
 from homeassistant.const import (
     CURRENCY_DOLLAR,
     CONF_EMAIL,
@@ -235,8 +234,8 @@ class ContactEnergyAccountSensor(ContactEnergyBaseSensor):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attrs = {}
-        if self.coordinator.last_update_success_time:
-            attrs["last_updated"] = self.coordinator.last_update_success_time.isoformat()
+        if self.coordinator.last_update_success:
+            attrs["last_updated"] = self.coordinator.last_update_success.isoformat()
         
         # Add payment history for monetary sensors
         if (self._attr_device_class == SensorDeviceClass.MONETARY and 
@@ -303,12 +302,15 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
             )
             
             # Create notification for large downloads
-            await async_create(
-                self.hass,
-                f"Contact Energy is downloading {self._usage_days} days of usage data in the background. "
-                f"This may take several minutes. You will be notified when complete.",
-                title="Contact Energy - Data Download Started",
-                notification_id=f"{DOMAIN}_download_{self._icp}"
+            await self.hass.services.async_call(
+                "persistent_notification",
+                "create",
+                {
+                    "message": f"Contact Energy is downloading {self._usage_days} days of usage data in the background. "
+                               f"This may take several minutes. You will be notified when complete.",
+                    "title": "Contact Energy - Data Download Started",
+                    "notification_id": f"{DOMAIN}_download_{self._icp}"
+                }
             )
             
             # Start the background task
@@ -482,12 +484,15 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
                 
                 # Update progress notification every chunk
                 progress_pct = int((chunk_end / self._usage_days) * 100)
-                await async_create(
-                    self.hass,
-                    f"Downloaded {chunk_end}/{self._usage_days} days ({progress_pct}%). "
-                    f"Errors: {self._download_progress['errors']}",
-                    title="Contact Energy - Download Progress",
-                    notification_id=f"{DOMAIN}_download_{self._icp}"
+                await self.hass.services.async_call(
+                    "persistent_notification",
+                    "create",
+                    {
+                        "message": f"Downloaded {chunk_end}/{self._usage_days} days ({progress_pct}%). "
+                                   f"Errors: {self._download_progress['errors']}",
+                        "title": "Contact Energy - Download Progress",
+                        "notification_id": f"{DOMAIN}_download_{self._icp}"
+                    }
                 )
                 
                 # Add small delay between chunks to be nice to the API
@@ -500,12 +505,15 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
             self._last_usage_update = now
 
             # Success notification
-            await async_create(
-                self.hass,
-                f"Successfully downloaded {self._download_progress['completed']} days of usage data. "
-                f"Errors: {self._download_progress['errors']}. Data is now available in the Energy Dashboard.",
-                title="Contact Energy - Download Complete",
-                notification_id=f"{DOMAIN}_download_{self._icp}"
+            await self.hass.services.async_call(
+                "persistent_notification",
+                "create",
+                {
+                    "message": f"Successfully downloaded {self._download_progress['completed']} days of usage data. "
+                               f"Errors: {self._download_progress['errors']}. Data is now available in the Energy Dashboard.",
+                    "title": "Contact Energy - Download Complete",
+                    "notification_id": f"{DOMAIN}_download_{self._icp}"
+                }
             )
             
             _LOGGER.info("Background download completed successfully. Days: %s, Errors: %s", 
@@ -517,12 +525,15 @@ class ContactEnergyUsageSensor(ContactEnergyBaseSensor):
 
     async def _notify_download_error(self, error_msg: str) -> None:
         """Send error notification to user."""
-        await async_create(
-            self.hass,
-            f"Failed to download usage data: {error_msg}. "
-            f"The integration will continue to work for account data, but usage statistics may be incomplete.",
-            title="Contact Energy - Download Error",
-            notification_id=f"{DOMAIN}_download_error_{self._icp}"
+        await self.hass.services.async_call(
+            "persistent_notification",
+            "create",
+            {
+                "message": f"Failed to download usage data: {error_msg}. "
+                           f"The integration will continue to work for account data, but usage statistics may be incomplete.",
+                "title": "Contact Energy - Download Error",
+                "notification_id": f"{DOMAIN}_download_error_{self._icp}"
+            }
         )
 
     @staticmethod
