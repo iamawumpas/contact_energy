@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.4.2 - 2025-10-10
+
+Fixed Runtime Errors
+
+Fixed critical runtime errors including AttributeError and TypeError issues that prevented sensors from loading properly. Updated notification system to use proper Home Assistant service calls.
+
 ## v0.4.1 - 2025-10-10
 
 Added Energy Usage Sensors for ApexCharts
